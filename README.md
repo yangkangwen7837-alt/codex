@@ -99,6 +99,7 @@ cp .streamlit/secrets.toml.example .streamlit/secrets.toml   # 然后填入真�
 python scripts/check_deploy.py       # 输出 PASS/WARN/FAIL 与 DEPLOY READY / NOT READY
 python scripts/check_pages.py --all  # 页面渲染自检（正常 / 云端只读 / 快照回退 / 空数据）
 python scripts/run_tests.py          # 单元测试（带时间戳临时目录，规避本机权限问题）
+python scripts/check_live_site.py https://xxx.streamlit.app   # 线上站点健康检查（默认查本地）
 ```
 
 > **云端是只读部署**：`data/raw`、`data/processed` 不进 git（合计约 2.8 GB），

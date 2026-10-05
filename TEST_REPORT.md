@@ -17,6 +17,7 @@
 | T9 | 快照导出 | `python scripts/export_snapshot.py --dry-run` | ✅ 最新一期 20260930，19 个文件 / **4.49 MB** |
 | T10 | 快照发布（端到端） | 在 `tmp/` 下建"裸远端 + 克隆"沙盘跑 `publish_snapshot.py` | ✅ 有变化→提交 `Update data snapshot 20260930` 并推送成功；再跑一次→报"没有变化，无需提交"、**不产生空提交** |
 | T11 | 真实仓库发布 | `python scripts/publish_snapshot.py`（本地，无变化） | ✅ 输出"快照没有变化（与上一期一致），无需提交"，退出码 0 |
+| T12 | 线上站点健康检查 | `python scripts/check_live_site.py`（本地 http://localhost:8501） | ✅ 首页 200 / 健康端点 ok / 静态资源 68-68 可取 / 前端握手配置 200 |
 | T6 | 密钥扫描 | 全仓库正则扫描 token / api_key / secret / password / access_key / database_url | ✅ 无硬编码密钥（唯一命中为 `secrets.toml.example` 的空占位与 `get_secret()` 调用） |
 | T7 | 绝对路径扫描 | 扫描 `C:\` / `D:\` / `/Users/` / `/home/` / `/Desktop/` / `/Documents/` | ✅ 业务代码无绝对路径（仅文档与 Dockerfile 注释含示例路径） |
 | T8 | 部署前自检 | `python scripts/check_deploy.py` | 见第 3 节 |

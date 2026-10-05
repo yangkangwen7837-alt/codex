@@ -17,7 +17,10 @@ PROCESSED_DIR = DATA_DIR / "processed"
 OUTPUT_DIR = PROJECT_ROOT / "output"
 
 for _p in (RAW_DIR, PROCESSED_DIR, OUTPUT_DIR):
-    _p.mkdir(parents=True, exist_ok=True)
+    try:
+        _p.mkdir(parents=True, exist_ok=True)
+    except OSError:  # 只读文件系统（例如某些云端/容器环境）不应导致整个包导入失败
+        pass
 
 __all__ = [
     "__version__",

@@ -53,6 +53,7 @@
 | `scripts/check_pages.py` | ✅ 新增页面渲染自检（正常 / 云端只读 / 快照回退 / 空数据 四种模式） |
 | `scripts/export_snapshot.py` + `data/snapshot/` | ✅ 新增"最新一期"数据快照（19 个文件 / 4.49 MB），让云端页面不至于空白 |
 | `scripts/publish_snapshot.py` | ✅ 新增"一条命令发布"（导出 → 只暂存 `data/snapshot/` → 提交 → 推送；无变化自动跳过），已接入每日 17:30 自动化 |
+| `scripts/check_live_site.py` | ✅ 新增线上健康检查（首页 / `_stcore/health` / 静态资源 / 前端握手配置），本地与云端都可用 |
 | `scripts/run_tests.py` | ✅ 新增测试包装（时间戳临时目录，规避本机 tmp_path 权限问题） |
 | README 部署章节 | ✅ 新增 Main file path、Local Run、Secrets、Deploy to Streamlit Cloud |
 | Git 仓库 | ✅ 已 `git init` + `git branch -M main` + 首次 commit |
@@ -72,6 +73,7 @@
 | R4 | Tushare token | 泄露后他人可消耗配额 | 代码从不硬编码；统一走 `config.get_secret()`（`st.secrets` → `os.getenv` → 默认值）；`.gitignore` 排除 `secrets.toml`；`check_deploy.py` 扫描硬编码 |
 | R5 | 硬编码 Windows 路径（`C:\` / `D:\`） | 云端找不到文件 | 已扫描：业务代码无绝对路径（全部基于 `PROJECT_ROOT = Path(__file__).resolve().parents[2]`）；仅文档注释里有示例路径 |
 | R6 | 项目根目录 ACL 所有者异常（`LAPTOP-GJ1K6PPC\CodexSandboxUsers` / `CodexSandboxOnline`） | 影响 Codex 沙箱（PowerShell、内置浏览器）；在普通终端跑 `git` 会报 `detected dubious ownership`。**不影响** Streamlit Cloud 部署 | 记录在 [docs/14_troubleshooting.md](docs/14_troubleshooting.md)，需管理员执行 `takeown` + `icacls` 修复（修完 `dubious ownership` 一并消失）。临时绕过：`git config --global --add safe.directory "D:/GPT/基本面反转交易策略"` |
+| R9 | 云端文件系统若为只读，`bigfish` 包导入时的建目录动作会抛异常 | 所有页面整片报错（最坏情况） | 已加固：`src/bigfish/__init__.py` 建目录改为容错（`OSError` 直接忽略）；云端写操作本就已全部关闭 |
 | R7 | 数据库 | 当前项目**不使用**数据库（无 sqlalchemy/psycopg2）；`secrets.toml.example` 里的 `[database]` 为未来腾讯云预留 | 预留不改代码；将来接入时按规格要求加 timeout + try/except + 明确错误提示 |
 | R8 | 外部 API（Tushare） | 超时/限流 | 适配器已有重试与限流处理，失败只写状态文件，页面不会因此崩溃 |
 
