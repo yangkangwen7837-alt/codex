@@ -51,12 +51,20 @@ ALLOW_WIN_PATH = ("check_deploy.py", "docs\\", "docs/", ".md")
 
 
 def _run_git(*args: str) -> tuple[int, str]:
-    try:
-        proc = subprocess.run(["git", *args], cwd=str(ROOT), capture_output=True,
-                              text=True, encoding="utf-8", errors="replace")
-        return proc.returncode, (proc.stdout or proc.stderr).strip()
-    except FileNotFoundError:
-        return 127, "git 未安装"
+    def _invoke(extra: list[str]) -> tuple[int, str]:
+        try:
+            proc = subprocess.run(["git", *extra, *args], cwd=str(ROOT), capture_output=True,
+                                  text=True, encoding="utf-8", errors="replace")
+        except FileNotFoundError:
+            return 127, "git 未安装"
+        return proc.returncode, ((proc.stdout or "") + (proc.stderr or "")).strip()
+
+    rc, out = _invoke([])
+    if rc != 0 and "dubious ownership" in out:
+        # 目录所有者与当前用户不一致（本机出现过：.git 由沙箱账户创建）时自愈，
+        # 不写全局配置，只对本次调用生效。
+        rc, out = _invoke(["-c", f"safe.directory={ROOT.as_posix()}"])
+    return rc, out
 
 
 def _iter_files():

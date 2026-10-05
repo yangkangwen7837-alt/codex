@@ -50,6 +50,7 @@
 | `requirements-dev.txt` | ✅ 新增（pytest，Cloud 不需要） |
 | `Dockerfile` / `.dockerignore` | ✅ 新增（python:3.11-slim、`WORKDIR /app`、healthcheck、`--server.address=0.0.0.0`） |
 | `scripts/check_deploy.py` | ✅ 新增部署前自检 |
+| `scripts/check_pages.py` | ✅ 新增页面渲染自检（正常 / 云端只读 / 空数据冷启动三种模式） |
 | README 部署章节 | ✅ 新增 Main file path、Local Run、Secrets、Deploy to Streamlit Cloud |
 | Git 仓库 | ✅ 已 `git init` + `git branch -M main` + 首次 commit |
 | GitHub remote | ⏳ **缺 GitHub repository URL**（见第 5 节） |

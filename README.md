@@ -97,6 +97,7 @@ cp .streamlit/secrets.toml.example .streamlit/secrets.toml   # 然后填入真�
 
 ```bash
 python scripts/check_deploy.py       # 输出 PASS/WARN/FAIL 与 DEPLOY READY / NOT READY
+python scripts/check_pages.py --all  # 页面渲染自检（正常 / 云端只读 / 空数据冷启动）
 ```
 
 > **云端是只读部署**：`data/raw`、`data/processed` 不进 git（合计约 2.8 GB），

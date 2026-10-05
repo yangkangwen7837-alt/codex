@@ -10,9 +10,9 @@
 |---|---|---|---|
 | T1 | 语法与导入 | 对新增/修改文件做 `py_compile` | ✅ 通过 |
 | T2 | 单元测试 | `python -m pytest tests -q --basetemp=tmp/pytest_run` | ✅ **22 passed** |
-| T3 | 页面无头渲染 | Streamlit `AppTest` 渲染 8 个页面 + 入口 | ✅ **9 / 9 通过**，无异常 |
-| T4 | 云端只读模式 | `BIGFISH_FORCE_CLOUD=1` 后重新渲染全部页面 | ✅ **9 / 9 通过**；「立即更新」按钮不渲染；`run_update()` 返回 `blocked` |
-| T5 | 冷启动（无数据） | 把 `PROCESSED_DIR` / `OUTPUT_DIR` 指向空目录后渲染全部页面 | ✅ **9 / 9 通过**，只显示「暂无数据」提示，无异常 |
+| T3 | 页面无头渲染 | `python scripts/check_pages.py`（Streamlit `AppTest` 渲染 8 个页面 + 入口） | ✅ **9 / 9 通过**，无异常 |
+| T4 | 云端只读模式 | `python scripts/check_pages.py --cloud` | ✅ **9 / 9 通过**；「立即更新」按钮不渲染；`run_update()` 返回 `blocked` |
+| T5 | 冷启动（无数据） | `python scripts/check_pages.py --coldstart` | ✅ **9 / 9 通过**，只显示「暂无数据」提示，无异常 |
 | T6 | 密钥扫描 | 全仓库正则扫描 token / api_key / secret / password / access_key / database_url | ✅ 无硬编码密钥（唯一命中为 `secrets.toml.example` 的空占位与 `get_secret()` 调用） |
 | T7 | 绝对路径扫描 | 扫描 `C:\` / `D:\` / `/Users/` / `/home/` / `/Desktop/` / `/Documents/` | ✅ 业务代码无绝对路径（仅文档与 Dockerfile 注释含示例路径） |
 | T8 | 部署前自检 | `python scripts/check_deploy.py` | 见第 3 节 |
@@ -32,7 +32,7 @@
 > 系统临时目录（`%TEMP%\pytest-of-*`，WinError 5）而报错；指定仓库内基线目录
 > `--basetemp=tmp/pytest_run` 后 22 项全通过。这是沙箱权限问题，不是代码问题。
 
-**T3 / T4 / T5 页面渲染（AppTest）**
+**T3 / T4 / T5 页面渲染（AppTest，`scripts/check_pages.py --all`）**
 
 ```
 T3 正常数据：  radar OK / watchlist OK / early OK / ponds OK / matrix OK /
@@ -42,7 +42,7 @@ T4 云端只读：  同上 9/9；ops 页面按钮列表 = []（不渲染「立�
 T5 冷启动：    同上 9/9（数据目录为空时全部友好降级）
 ```
 
-各页面渲染到的元素（正常数据下）：
+各页面渲染到的元素（正常数据下，由 `tmp/test_pages.py` 统计）：
 
 | 页面 | 表格数 | 指标数 |
 |---|---:|---:|
@@ -90,8 +90,6 @@ T5 冷启动：    同上 9/9（数据目录为空时全部友好降级）
 
 ```bash
 python -m pytest tests -q --basetemp=tmp/pytest_run
-python tmp/test_pages.py            # 正常数据下 8 页面 + 入口
-python tmp/test_cloud.py            # 云端只读模式
-python tmp/test_coldstart.py        # 空数据冷启动
-python scripts/check_deploy.py      # 部署前自检
+python scripts/check_pages.py --all   # 正常 / 云端只读 / 空数据冷启动，三模式全跑
+python scripts/check_deploy.py        # 部署前自检
 ```
