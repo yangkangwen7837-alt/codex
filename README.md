@@ -123,10 +123,15 @@ parquet 时才回退到 `data/snapshot/`（云端就是这个情况），页面�
 也不会因为快照而在本地显示过期结果。每日更新流程是：
 
 ```bash
-python scripts/fetch_data.py && python scripts/run_daily.py && python scripts/watchlist_flicker.py --write
-python scripts/export_snapshot.py
-git add data/snapshot && git commit -m "Update data snapshot" && git push
+python scripts/fetch_data.py                 # 1) 增量抓数
+python scripts/run_daily.py                  # 2) 全链路跑批
+python scripts/watchlist_flicker.py --write  # 3) 观察池历史与闪烁率
+python scripts/publish_snapshot.py           # 4) 导出快照 + 提交 + 推送（一条命令）
 ```
+
+`publish_snapshot.py` 只暂存 `data/snapshot/`，没有变化时直接跳过（不产生空提交），
+推送被拒（远端有新提交）时会提示先 `git pull --rebase`。**每日 17:30 的自动化
+`BigFish 每日跑批与闪烁率跟踪` 已经包含这四步**，所以云端网页会跟着自动更新。
 
 > ⚠️ 快照是**公开仓库**的一部分：它包含最近一期的评分、观察池/重点/早期榜单与每日简报。
 > 如不希望这些结果公开，把 GitHub 仓库改为 private（Streamlit Cloud 支持私有仓库授权部署），

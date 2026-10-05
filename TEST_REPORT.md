@@ -15,6 +15,8 @@
 | T5 | 快照回退（云端仓库形态） | `python scripts/check_pages.py --snapshot` | ✅ **9 / 9 通过**；实时目录为空时自动回退 `data/snapshot/`，读到评分 **6546 行** |
 | T5b | 冷启动（连快照也没有） | `python scripts/check_pages.py --coldstart` | ✅ **9 / 9 通过**，只显示「暂无数据」提示，无异常 |
 | T9 | 快照导出 | `python scripts/export_snapshot.py --dry-run` | ✅ 最新一期 20260930，19 个文件 / **4.49 MB** |
+| T10 | 快照发布（端到端） | 在 `tmp/` 下建"裸远端 + 克隆"沙盘跑 `publish_snapshot.py` | ✅ 有变化→提交 `Update data snapshot 20260930` 并推送成功；再跑一次→报"没有变化，无需提交"、**不产生空提交** |
+| T11 | 真实仓库发布 | `python scripts/publish_snapshot.py`（本地，无变化） | ✅ 输出"快照没有变化（与上一期一致），无需提交"，退出码 0 |
 | T6 | 密钥扫描 | 全仓库正则扫描 token / api_key / secret / password / access_key / database_url | ✅ 无硬编码密钥（唯一命中为 `secrets.toml.example` 的空占位与 `get_secret()` 调用） |
 | T7 | 绝对路径扫描 | 扫描 `C:\` / `D:\` / `/Users/` / `/home/` / `/Desktop/` / `/Documents/` | ✅ 业务代码无绝对路径（仅文档与 Dockerfile 注释含示例路径） |
 | T8 | 部署前自检 | `python scripts/check_deploy.py` | 见第 3 节 |

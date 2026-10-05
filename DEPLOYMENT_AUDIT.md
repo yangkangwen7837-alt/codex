@@ -52,6 +52,7 @@
 | `scripts/check_deploy.py` | ✅ 新增部署前自检 |
 | `scripts/check_pages.py` | ✅ 新增页面渲染自检（正常 / 云端只读 / 快照回退 / 空数据 四种模式） |
 | `scripts/export_snapshot.py` + `data/snapshot/` | ✅ 新增"最新一期"数据快照（19 个文件 / 4.49 MB），让云端页面不至于空白 |
+| `scripts/publish_snapshot.py` | ✅ 新增"一条命令发布"（导出 → 只暂存 `data/snapshot/` → 提交 → 推送；无变化自动跳过），已接入每日 17:30 自动化 |
 | `scripts/run_tests.py` | ✅ 新增测试包装（时间戳临时目录，规避本机 tmp_path 权限问题） |
 | README 部署章节 | ✅ 新增 Main file path、Local Run、Secrets、Deploy to Streamlit Cloud |
 | Git 仓库 | ✅ 已 `git init` + `git branch -M main` + 首次 commit |
@@ -83,7 +84,7 @@
 3. `apps/streamlit_app.py`：`_boot()` 在云端跳过 APScheduler
 4. `apps/common.py`：新增 `is_cloud()`；`run_update()` / `set_update_settings()` 在云端短路为只读提示
 5. `apps/app_pages/ops.py`：云端隐藏「立即更新」、置灰自动更新开关并显示说明
-6. 新增 `.gitignore` / `.dockerignore` / `.streamlit/secrets.toml.example` / `Dockerfile` / `requirements.txt` / `requirements-dev.txt` / `scripts/check_deploy.py` / `scripts/check_pages.py` / `scripts/export_snapshot.py` / `scripts/run_tests.py` / `data/snapshot/`
+6. 新增 `.gitignore` / `.dockerignore` / `.streamlit/secrets.toml.example` / `Dockerfile` / `requirements.txt` / `requirements-dev.txt` / `scripts/check_deploy.py` / `scripts/check_pages.py` / `scripts/export_snapshot.py` / `scripts/publish_snapshot.py` / `scripts/run_tests.py` / `data/snapshot/`
 7. `README.md`：新增部署章节（Main file path / Local Run / Secrets / Deploy）
 8. `apps/common.py`：新增「实时数据优先、云端回退快照」的目录解析（不改任何计算逻辑）
 
