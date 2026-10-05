@@ -1,0 +1,18 @@
+[
+  {
+    "state": "done",
+    "trigger": "selftest",
+    "started_at": "2026-10-05T14:10:02+08:00",
+    "finished_at": "2026-10-05T14:10:03+08:00",
+    "seconds": 0.6,
+    "message": "更新完成"
+  },
+  {
+    "state": "done",
+    "trigger": "auto:收盘更新",
+    "started_at": "2026-10-05T16:30:00+08:00",
+    "finished_at": "2026-10-05T16:31:17+08:00",
+    "seconds": 78.0,
+    "message": "更新完成"
+  }
+]

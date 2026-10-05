@@ -125,3 +125,6 @@ with st.container(border=True):
     snapshot = C.data_version().split("|")
     st.dataframe(pd.DataFrame({"数据集": snapshot}), hide_index=True)
     st.caption("数据集一变，所有页面会自动清缓存并整页刷新（无需手动 F5）。")
+    if C.USING_SNAPSHOT:
+        st.caption(f"当前读取的是**随仓库发布的最新一期快照**（{C.PROCESSED_DIR}）；"
+                   "本地跑批后执行 `python scripts/export_snapshot.py` 再发布即可更新。")

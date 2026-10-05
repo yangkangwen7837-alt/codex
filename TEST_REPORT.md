@@ -10,9 +10,11 @@
 |---|---|---|---|
 | T1 | 语法与导入 | 对新增/修改文件做 `py_compile` | ✅ 通过 |
 | T2 | 单元测试 | `python -m pytest tests -q --basetemp=tmp/pytest_run` | ✅ **22 passed** |
-| T3 | 页面无头渲染 | `python scripts/check_pages.py`（Streamlit `AppTest` 渲染 8 个页面 + 入口） | ✅ **9 / 9 通过**，无异常 |
+| T3 | 页面无头渲染 | `python scripts/check_pages.py --normal`（Streamlit `AppTest` 渲染 8 个页面 + 入口） | ✅ **9 / 9 通过**，无异常 |
 | T4 | 云端只读模式 | `python scripts/check_pages.py --cloud` | ✅ **9 / 9 通过**；「立即更新」按钮不渲染；`run_update()` 返回 `blocked` |
-| T5 | 冷启动（无数据） | `python scripts/check_pages.py --coldstart` | ✅ **9 / 9 通过**，只显示「暂无数据」提示，无异常 |
+| T5 | 快照回退（云端仓库形态） | `python scripts/check_pages.py --snapshot` | ✅ **9 / 9 通过**；实时目录为空时自动回退 `data/snapshot/`，读到评分 **6546 行** |
+| T5b | 冷启动（连快照也没有） | `python scripts/check_pages.py --coldstart` | ✅ **9 / 9 通过**，只显示「暂无数据」提示，无异常 |
+| T9 | 快照导出 | `python scripts/export_snapshot.py --dry-run` | ✅ 最新一期 20260930，19 个文件 / **4.49 MB** |
 | T6 | 密钥扫描 | 全仓库正则扫描 token / api_key / secret / password / access_key / database_url | ✅ 无硬编码密钥（唯一命中为 `secrets.toml.example` 的空占位与 `get_secret()` 调用） |
 | T7 | 绝对路径扫描 | 扫描 `C:\` / `D:\` / `/Users/` / `/home/` / `/Desktop/` / `/Documents/` | ✅ 业务代码无绝对路径（仅文档与 Dockerfile 注释含示例路径） |
 | T8 | 部署前自检 | `python scripts/check_deploy.py` | 见第 3 节 |
@@ -21,16 +23,18 @@
 
 ## 2. 测试证据（摘要）
 
-**T2 单元测试**
+**T2 单元测试**（`python scripts/run_tests.py`）
 
 ```
 ......................                                                   [100%]
-22 passed in 2.06s
+22 passed in 1.86s
 ```
 
 > 直接跑 `python -m pytest tests -q` 时，2 个用到 `tmp_path` 的用例会因沙箱无法写入
-> 系统临时目录（`%TEMP%\pytest-of-*`，WinError 5）而报错；指定仓库内基线目录
-> `--basetemp=tmp/pytest_run` 后 22 项全通过。这是沙箱权限问题，不是代码问题。
+> 系统临时目录（`%TEMP%\pytest-of-*`，WinError 5）而报错；改用仓库内基线目录后，
+> 上一次运行留下的 0700 权限目录又会在下一次无法删除/列出（同样 WinError 5）。
+> `scripts/run_tests.py` 每次用全新的时间戳基线目录，22 项全通过。
+> 这是本机沙箱权限问题（见 `docs/14_troubleshooting.md`），不是代码问题。
 
 **T3 / T4 / T5 页面渲染（AppTest，`scripts/check_pages.py --all`）**
 
@@ -89,7 +93,8 @@ T5 冷启动：    同上 9/9（数据目录为空时全部友好降级）
 ## 5. 复现命令
 
 ```bash
-python -m pytest tests -q --basetemp=tmp/pytest_run
-python scripts/check_pages.py --all   # 正常 / 云端只读 / 空数据冷启动，三模式全跑
+python scripts/run_tests.py           # 22 项单元测试
+python scripts/check_pages.py --all   # 正常 / 云端只读 / 快照回退 / 空数据，四模式全跑
 python scripts/check_deploy.py        # 部署前自检
+python scripts/export_snapshot.py --dry-run   # 看最新一期快照会包含哪些文件
 ```

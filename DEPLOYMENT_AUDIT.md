@@ -50,7 +50,9 @@
 | `requirements-dev.txt` | ✅ 新增（pytest，Cloud 不需要） |
 | `Dockerfile` / `.dockerignore` | ✅ 新增（python:3.11-slim、`WORKDIR /app`、healthcheck、`--server.address=0.0.0.0`） |
 | `scripts/check_deploy.py` | ✅ 新增部署前自检 |
-| `scripts/check_pages.py` | ✅ 新增页面渲染自检（正常 / 云端只读 / 空数据冷启动三种模式） |
+| `scripts/check_pages.py` | ✅ 新增页面渲染自检（正常 / 云端只读 / 快照回退 / 空数据 四种模式） |
+| `scripts/export_snapshot.py` + `data/snapshot/` | ✅ 新增"最新一期"数据快照（19 个文件 / 4.49 MB），让云端页面不至于空白 |
+| `scripts/run_tests.py` | ✅ 新增测试包装（时间戳临时目录，规避本机 tmp_path 权限问题） |
 | README 部署章节 | ✅ 新增 Main file path、Local Run、Secrets、Deploy to Streamlit Cloud |
 | Git 仓库 | ✅ 已 `git init` + `git branch -M main` + 首次 commit |
 | GitHub remote | ⏳ **缺 GitHub repository URL**（见第 5 节） |
@@ -63,7 +65,9 @@
 |---|---|---|---|
 | R1 | `data/raw` + `data/processed` 合计 ≈ 2.9 GB，`data/processed` 里是评分/回测面板（含 `bigfish_score_latest.parquet`） | 若误提交，GitHub 会拒绝或仓库膨胀到不可用 | `.gitignore` 排除，且 `check_deploy.py` 会校验；**未删除任何数据** |
 | R2 | 云端文件系统只读 | 「立即更新」按钮、APScheduler 定时任务在 Cloud 上会报错/无效 | 新增 `is_streamlit_cloud()`，Cloud 上关闭调度器；`run_update()` 返回友好提示；页面按钮与开关置灰并给出说明 |
-| R3 | 首次部署时 `data/processed` 为空（数据不进 Git） | 页面可能白屏或报错 | 已做冷启动验证：8 页面 + 入口在空数据目录下全部正常渲染，只显示「暂无数据」提示（见 `TEST_REPORT.md`） |
+| R3 | 首次部署时 `data/processed` 为空（数据不进 Git） | 页面白屏/空白 | 已解决：`apps/common.py` 在实时目录没有 parquet 时**自动回退读取 `data/snapshot/`**（随仓库发布的最新一期，4.49 MB）。快照回退与全空两种极端情况都已验证（见 `TEST_REPORT.md`） |
+| R3b | 快照进入**公开**仓库（用户选择方案 B） | 最近一期的评分与榜单公开可见 | 已如实标注在 README：需要不公开时把仓库改 private，或删除 `data/snapshot/`（页面退化为"暂无数据"，不报错）。快照**只含派生结果**，不含 Tushare 原始行情/财务分片、不含任何密钥 |
+| R3c | 本地显示过期数据 | 若误读快照，本地会看到旧结果 | 读取优先级为**实时优先**：本地只要 `data/processed/*.parquet` 存在就绝不读快照 |
 | R4 | Tushare token | 泄露后他人可消耗配额 | 代码从不硬编码；统一走 `config.get_secret()`（`st.secrets` → `os.getenv` → 默认值）；`.gitignore` 排除 `secrets.toml`；`check_deploy.py` 扫描硬编码 |
 | R5 | 硬编码 Windows 路径（`C:\` / `D:\`） | 云端找不到文件 | 已扫描：业务代码无绝对路径（全部基于 `PROJECT_ROOT = Path(__file__).resolve().parents[2]`）；仅文档注释里有示例路径 |
 | R6 | 项目根目录 ACL 所有者异常（`LAPTOP-GJ1K6PPC\CodexSandboxUsers` / `CodexSandboxOnline`） | 影响 Codex 沙箱（PowerShell、内置浏览器）；在普通终端跑 `git` 会报 `detected dubious ownership`。**不影响** Streamlit Cloud 部署 | 记录在 [docs/14_troubleshooting.md](docs/14_troubleshooting.md)，需管理员执行 `takeown` + `icacls` 修复（修完 `dubious ownership` 一并消失）。临时绕过：`git config --global --add safe.directory "D:/GPT/基本面反转交易策略"` |
@@ -79,8 +83,9 @@
 3. `apps/streamlit_app.py`：`_boot()` 在云端跳过 APScheduler
 4. `apps/common.py`：新增 `is_cloud()`；`run_update()` / `set_update_settings()` 在云端短路为只读提示
 5. `apps/app_pages/ops.py`：云端隐藏「立即更新」、置灰自动更新开关并显示说明
-6. 新增 `.gitignore` / `.dockerignore` / `.streamlit/secrets.toml.example` / `Dockerfile` / `requirements.txt` / `requirements-dev.txt` / `scripts/check_deploy.py`
+6. 新增 `.gitignore` / `.dockerignore` / `.streamlit/secrets.toml.example` / `Dockerfile` / `requirements.txt` / `requirements-dev.txt` / `scripts/check_deploy.py` / `scripts/check_pages.py` / `scripts/export_snapshot.py` / `scripts/run_tests.py` / `data/snapshot/`
 7. `README.md`：新增部署章节（Main file path / Local Run / Secrets / Deploy）
+8. `apps/common.py`：新增「实时数据优先、云端回退快照」的目录解析（不改任何计算逻辑）
 
 **未改动**：评分公式与权重、因子逻辑、交易动作逻辑、回测引擎、数据内容、历史结果、数据库 schema、依赖树中与业务无关的部分。
 

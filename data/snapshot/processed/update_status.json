@@ -1,0 +1,31 @@
+{
+  "state": "done",
+  "trigger": "auto:收盘更新",
+  "started_at": "2026-10-05T16:30:00+08:00",
+  "finished_at": "2026-10-05T16:31:17+08:00",
+  "steps": [
+    {
+      "key": "fetch",
+      "label": "增量抓数",
+      "state": "done",
+      "detail": "交易日 666 天，最新 20260930，缺失项 0 条",
+      "seconds": 4.2
+    },
+    {
+      "key": "daily",
+      "label": "全链路跑批",
+      "state": "done",
+      "detail": "市场 Risk Off；观察池 100 只 / 重点 20 只 / 早期线索 20 只",
+      "seconds": 73.7
+    },
+    {
+      "key": "flicker",
+      "label": "观察池闪烁率跟踪",
+      "state": "done",
+      "detail": "观察池历史 1 个交易日；闪烁率 100%",
+      "seconds": 0.0
+    }
+  ],
+  "message": "更新完成",
+  "seconds": 78.0
+}

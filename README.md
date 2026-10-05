@@ -97,7 +97,8 @@ cp .streamlit/secrets.toml.example .streamlit/secrets.toml   # 然后填入真�
 
 ```bash
 python scripts/check_deploy.py       # 输出 PASS/WARN/FAIL 与 DEPLOY READY / NOT READY
-python scripts/check_pages.py --all  # 页面渲染自检（正常 / 云端只读 / 空数据冷启动）
+python scripts/check_pages.py --all  # 页面渲染自检（正常 / 云端只读 / 快照回退 / 空数据）
+python scripts/run_tests.py          # 单元测试（带时间戳临时目录，规避本机权限问题）
 ```
 
 > **云端是只读部署**：`data/raw`、`data/processed` 不进 git（合计约 2.8 GB），
@@ -106,6 +107,30 @@ python scripts/check_pages.py --all  # 页面渲染自检（正常 / 云端只�
 > `Dockerfile`、`.dockerignore`（不影响 Community Cloud）。
 
 审计与测试记录：[DEPLOYMENT_AUDIT.md](DEPLOYMENT_AUDIT.md)、[TEST_REPORT.md](TEST_REPORT.md)。
+
+### 云端的数据从哪来：`data/snapshot/` 最新一期快照
+
+云端仓库里没有 2.8 GB 的原始与跑批产物，所以随代码发布一份**只含最新一期的小快照**
+（约 4.5 MB，19 个文件）：
+
+```bash
+python scripts/export_snapshot.py            # 跑批后刷新快照（只复制页面真正读的那几个文件）
+python scripts/export_snapshot.py --dry-run  # 先看要复制什么
+```
+
+读取规则（`apps/common.py`）：**本地有实时数据就永远读实时数据**；只有实时目录没有
+parquet 时才回退到 `data/snapshot/`（云端就是这个情况），页面因此不会空白，
+也不会因为快照而在本地显示过期结果。每日更新流程是：
+
+```bash
+python scripts/fetch_data.py && python scripts/run_daily.py && python scripts/watchlist_flicker.py --write
+python scripts/export_snapshot.py
+git add data/snapshot && git commit -m "Update data snapshot" && git push
+```
+
+> ⚠️ 快照是**公开仓库**的一部分：它包含最近一期的评分、观察池/重点/早期榜单与每日简报。
+> 如不希望这些结果公开，把 GitHub 仓库改为 private（Streamlit Cloud 支持私有仓库授权部署），
+> 或删除 `data/snapshot/`（页面会退化为"暂无数据"但不会报错）。
 
 输出目录 `output/`：
 

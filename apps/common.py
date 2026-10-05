@@ -12,13 +12,31 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
-from bigfish import OUTPUT_DIR, PROCESSED_DIR  # noqa: E402
+from bigfish import OUTPUT_DIR as LIVE_OUTPUT_DIR  # noqa: E402
+from bigfish import PROCESSED_DIR as LIVE_PROCESSED_DIR  # noqa: E402
 from bigfish.config import is_streamlit_cloud, load_settings  # noqa: E402
-from bigfish.update import (UpdateService, load_status, load_update_settings,  # noqa: E402
+from bigfish.update import (UpdateService, load_update_settings,  # noqa: E402
                             save_update_settings, scheduler_status)
 
 VERSION_FILES = ("bigfish_score_latest.parquet", "bigfish_history.parquet",
                  "run_summary.json", "flicker_status.json", "update_status.json")
+
+# 部署说明：data/raw 与 data/processed 约 2.9 GB，不进 Git，只留在本地。
+# 仓库里随代码发布的是「最新一期」小快照（data/snapshot，约 4.5 MB，由
+# scripts/export_snapshot.py 导出）。本地有实时数据时永远读实时数据；
+# 云端（仓库里没有 processed 产物）自动回退到快照，页面因此不会空白。
+SNAPSHOT_DIR = ROOT / "data" / "snapshot"
+
+
+def _pick_dir(live: Path, snapshot: Path, pattern: str) -> Path:
+    if any(live.glob(pattern)):
+        return live
+    return snapshot if any(snapshot.glob(pattern)) else live
+
+
+PROCESSED_DIR = _pick_dir(LIVE_PROCESSED_DIR, SNAPSHOT_DIR / "processed", "*.parquet")
+OUTPUT_DIR = _pick_dir(LIVE_OUTPUT_DIR, SNAPSHOT_DIR / "output", "*.md")
+USING_SNAPSHOT = PROCESSED_DIR != LIVE_PROCESSED_DIR
 
 
 # ---------------------------------------------------------------- 基础读取
@@ -88,7 +106,9 @@ def flicker_status() -> dict:
 
 
 def update_status() -> dict:
-    return load_status()
+    """最近一次更新状态。本地读实时目录，云端回退到快照目录。"""
+    return _json(PROCESSED_DIR / "update_status.json",
+                 {"state": "idle", "steps": [], "message": "尚未运行过更新"})
 
 
 def update_history() -> list[dict]:

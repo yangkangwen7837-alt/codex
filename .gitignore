@@ -68,10 +68,15 @@ data/*.sqlite3
 *.sqlite
 *.sqlite3
 
+# 例外：data/snapshot/ 是「最新一期」小快照（约 4.5 MB），**故意提交**，
+#       供 Streamlit Cloud 只读展示（由 scripts/export_snapshot.py 生成）。
+#       它不含原始行情/财务分片，只有派生出来的评分与榜单结果。
+!data/snapshot/
+!data/snapshot/**
+
 # 中间产物与一次性脚本
 tmp/
 
 # 每日产出（可由 run_daily.py 重新生成；保留 sample 目录）
 output/*
 !output/.gitkeep
-

@@ -58,6 +58,8 @@ page = st.navigation(
 
 with st.sidebar:
     st.caption(f"数据基准日：**{C.latest_trade_date()}**")
+    if C.USING_SNAPSHOT:
+        st.caption(":grey[数据来源：随仓库发布的最新一期快照（只读）]")
     status = C.update_status()
     state = status.get("state", "idle")
     label = {"idle": ":grey[尚未更新]", "running": ":blue[更新中]",
