@@ -78,20 +78,27 @@ python scripts/site_patrol.py --restart  # 网站掉线时自动重启
 python scripts/site_patrol.py --json     # 机器可读结果
 ```
 
-检查五项，任一异常都会写入 `output/patrol_report.md` 与
+检查六项，任一异常都会写入 `output/patrol_report.md` 与
 `data/processed/patrol_status.json` 并以非零退出码结束：
 
 | 检查项 | 判定方式 | 异常含义 |
 |---|---|---|
 | 网站存活 | `/_stcore/health` + 随机抽一个前端 JS 资源 | 服务或静态资源异常（会区分"服务挂了"和"页面白屏"） |
+| 线上站点 | 同 `check_live_site.py`：首页 / 健康端点 / 静态资源 / 前端握手配置（地址取 `site.public_url`，未配置则跳过） | Streamlit Cloud 上的站点挂了或资源缺失；**只汇报不重启**（云端重启只能在控制台操作） |
 | 沙箱环境 | `~/.codex/.sandbox/setup_error.json` 是否新鲜（30 分钟内） | 沙箱初始化失败 → PowerShell / 内置浏览器不可用 |
 | 目录 ACL | 沙箱日志里的 `write ACE grant failed on <path>` | 工作区目录权限异常（通常是属主问题），报告里直接给出修复命令 |
 | 数据新鲜度 | 本地最新交易日 vs 今天（>10 天才算异常，兼容长假） | 抓数没推进 |
 | 最近更新 | `update_status.json` 状态 | 上一次跑批失败 |
 
+单点体检任意地址（本地或云端都一样）：
+
+```bash
+python scripts/check_live_site.py https://xxxx.streamlit.app
+```
+
 **自动化**：`BigFish 网站巡检`（每天 09:00 / 13:00 / 17:00 / 21:00）执行
 `site_patrol.py --restart`，**正常时不发消息**，只在发现异常、自动重启过网站、
-或之前的问题恢复时通知一次。
+线上站点检查不通过、或之前的问题恢复时通知一次。
 
 ## 3. 经验教训（写进开发约定）
 

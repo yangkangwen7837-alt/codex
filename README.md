@@ -43,9 +43,12 @@ python scripts/run_scheduler.py               # 只跑调度器（无人值守�
 python scripts/site_patrol.py --restart       # 巡检（网站掉线自动重启）
 ```
 
-**巡检**：`site_patrol.py` 检查网站存活（含前端资源）、沙箱环境、工作区目录 ACL、
-数据新鲜度与最近更新状态，产出 `output/patrol_report.md`；
+**巡检**：`site_patrol.py` 检查网站存活（含前端资源）、**线上站点（Streamlit Cloud）**、
+沙箱环境、工作区目录 ACL、数据新鲜度与最近更新状态，产出 `output/patrol_report.md`；
 自动化 `BigFish 网站巡检`（每天 09/13/17/21 点）在异常时通知。
+线上地址填在 `configs/default.yaml` 的 `site.public_url`（或用环境变量
+`BIGFISH_PUBLIC_URL` 覆盖），留空则自动跳过线上检查；也可用
+`python scripts/check_live_site.py <网址>` 单独体检任意地址。
 遇到过"网页打不开但服务端正常"的情况，排查记录见
 [docs/14_troubleshooting.md](docs/14_troubleshooting.md)。
 

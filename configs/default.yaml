@@ -305,6 +305,10 @@ funnel:
 site:
   title: 基本面反转 Big Fish Agent
   port: 8501
+  # 线上站点地址（Streamlit Community Cloud 部署后填这里，例如
+  # https://xxxx.streamlit.app）。留空 = 巡检跳过线上检查；
+  # 也可用环境变量 BIGFISH_PUBLIC_URL 覆盖。
+  public_url: ""
   refresh_seconds: 60          # 页面自动刷新间隔（数据集版本变化时才重绘）
   running_refresh_seconds: 5   # 更新进行中的刷新间隔
 
