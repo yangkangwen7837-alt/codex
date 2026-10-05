@@ -100,3 +100,26 @@ python scripts/site_patrol.py --json     # 机器可读结果
 2. **终端全挂 + 浏览器打不开，要优先怀疑环境/沙箱，而不是应用代码**：
    本次网站服务端自始至终是 200，先入为主去查代码会绕远路。
 3. 诊断"网页打不开"的最小证据链：进程存活 → 健康检查 → **前端资源是否可取** → 客户端运行时日志。
+
+## 4. 连带影响：git 报 "dubious ownership"（2026-10-05 补充）
+
+同样是属主问题的连带后果：沙箱进程创建的文件/目录，属主会记成沙箱账户
+（`CodexSandboxUsers` / `CodexSandboxOnline`），而普通终端是当前用户，于是
+
+```
+fatal: detected dubious ownership in repository at 'D:/GPT/基本面反转交易策略'
+'.../.git' is owned by: LAPTOP-GJ1K6PPC/CodexSandboxOnline
+but the current user is: LAPTOP-GJ1K6PPC/Yang Kangwen
+```
+
+**两种处理**：
+
+1. 执行第 1 节的管理员修复命令（属主改回本人）→ 报错自动消失（推荐）；
+2. 临时绕过（只影响这一台机器，写进全局 git 配置）：
+
+```bash
+git config --global --add safe.directory "D:/GPT/基本面反转交易策略"
+```
+
+`scripts/check_deploy.py` 已经内置自愈：检测到这个报错时会自动带上
+`-c safe.directory=...` 重试，所以自检本身不受影响。

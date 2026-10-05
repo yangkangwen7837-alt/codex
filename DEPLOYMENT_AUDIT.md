@@ -66,7 +66,7 @@
 | R3 | 首次部署时 `data/processed` 为空（数据不进 Git） | 页面可能白屏或报错 | 已做冷启动验证：8 页面 + 入口在空数据目录下全部正常渲染，只显示「暂无数据」提示（见 `TEST_REPORT.md`） |
 | R4 | Tushare token | 泄露后他人可消耗配额 | 代码从不硬编码；统一走 `config.get_secret()`（`st.secrets` → `os.getenv` → 默认值）；`.gitignore` 排除 `secrets.toml`；`check_deploy.py` 扫描硬编码 |
 | R5 | 硬编码 Windows 路径（`C:\` / `D:\`） | 云端找不到文件 | 已扫描：业务代码无绝对路径（全部基于 `PROJECT_ROOT = Path(__file__).resolve().parents[2]`）；仅文档注释里有示例路径 |
-| R6 | 项目根目录 ACL 所有者异常（`LAPTOP-GJ1K6PPC\CodexSandboxUsers`） | 影响 Codex 沙箱写权限，**不影响** Git / Streamlit Cloud 部署 | 记录在 [docs/14_troubleshooting.md](docs/14_troubleshooting.md)，需管理员执行 `takeown` + `icacls` 修复 |
+| R6 | 项目根目录 ACL 所有者异常（`LAPTOP-GJ1K6PPC\CodexSandboxUsers` / `CodexSandboxOnline`） | 影响 Codex 沙箱（PowerShell、内置浏览器）；在普通终端跑 `git` 会报 `detected dubious ownership`。**不影响** Streamlit Cloud 部署 | 记录在 [docs/14_troubleshooting.md](docs/14_troubleshooting.md)，需管理员执行 `takeown` + `icacls` 修复（修完 `dubious ownership` 一并消失）。临时绕过：`git config --global --add safe.directory "D:/GPT/基本面反转交易策略"` |
 | R7 | 数据库 | 当前项目**不使用**数据库（无 sqlalchemy/psycopg2）；`secrets.toml.example` 里的 `[database]` 为未来腾讯云预留 | 预留不改代码；将来接入时按规格要求加 timeout + try/except + 明确错误提示 |
 | R8 | 外部 API（Tushare） | 超时/限流 | 适配器已有重试与限流处理，失败只写状态文件，页面不会因此崩溃 |
 

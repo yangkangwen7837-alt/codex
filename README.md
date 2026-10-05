@@ -105,6 +105,8 @@ python scripts/check_pages.py --all  # 页面渲染自检（正常 / 云端只�
 > 定时调度器在云端会自动关闭并给出提示，不会报错。Docker / 腾讯云迁移备用见
 > `Dockerfile`、`.dockerignore`（不影响 Community Cloud）。
 
+审计与测试记录：[DEPLOYMENT_AUDIT.md](DEPLOYMENT_AUDIT.md)、[TEST_REPORT.md](TEST_REPORT.md)。
+
 输出目录 `output/`：
 
 | 文件 | 说明 |
