@@ -1,0 +1,2 @@
+# 占位文件：让空的 output/ 目录进入版本库。
+# 运行 python scripts/run_daily.py 后生成的实际产出（日报 / 榜单 / 卡片）已被 .gitignore 忽略。

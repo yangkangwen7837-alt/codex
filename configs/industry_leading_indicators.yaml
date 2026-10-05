@@ -1,0 +1,125 @@
+# =============================================================================
+# LEVEL 4 · 前瞻指标模板（规格书第 16 节）
+# 每个行业声明"应该看什么"，并标注该指标在当前数据源下能不能拿到。
+# available=true 的指标才参与 LIS 打分；不可得的指标显式记入 data_gap，
+# 绝不用主观判断填充（规格书第 37 节 / 67 节）。
+# =============================================================================
+default:
+  template: DEFAULT
+  indicators:
+    - {key: orders_demand,        label: 订单/需求,     proxy: revenue_acceleration, available: true}
+    - {key: product_price,        label: 产品价格,      proxy: gross_margin_trend,   available: true}
+    - {key: inventory_cycle,      label: 库存周期,      proxy: inventory_vs_revenue, available: true}
+    - {key: contract_liability,   label: 合同负债,      proxy: contract_liab_yoy,    available: true}
+    - {key: management_guidance,  label: 管理层指引,    proxy: forecast_range_mid,   available: true}
+    - {key: capacity_utilization, label: 产能利用率,    proxy: null,                 available: false}
+    - {key: industry_highfreq,    label: 行业高频数据,  proxy: null,                 available: false}
+    - {key: other,                label: 其他前瞻指标,  proxy: null,                 available: false}
+
+  # 数据缺口说明（写入输出的 data_gap 字段，供总控 Agent 与人工复核）
+  data_gap_note: "产能利用率/开工率/行业高频价格需外部产业数据库（如 Wind/钢联/百川），当前账号下不可得"
+
+有色:
+  template: CYCLE
+  indicators:
+    - {key: product_price,        label: 产品价格（金属价格）, proxy: industry_price_momentum, available: true}
+    - {key: inventory_cycle,      label: 库存周期,             proxy: inventory_vs_revenue,    available: true}
+    - {key: orders_demand,        label: 下游需求,             proxy: revenue_acceleration,    available: true}
+    - {key: contract_liability,   label: 合同负债/预收,        proxy: contract_liab_yoy,       available: true}
+    - {key: capacity_utilization, label: 开工率/产能利用率,    proxy: null,                    available: false}
+  data_gap_note: "金属现货价格与冶炼开工率不在 Tushare 覆盖范围，用行业指数动量 + 行业毛利率代理"
+
+基础化工:
+  template: CYCLE
+  indicators:
+    - {key: product_price,        label: 化工品价格, proxy: industry_price_momentum, available: true}
+    - {key: inventory_cycle,      label: 库存周期,   proxy: inventory_vs_revenue,    available: true}
+    - {key: orders_demand,        label: 需求,       proxy: revenue_acceleration,    available: true}
+    - {key: contract_liability,   label: 合同负债,   proxy: contract_liab_yoy,       available: true}
+  data_gap_note: "化工品价格指数（百川/隆众）不可得，用行业指数动量 + 行业毛利率代理"
+
+电子:
+  template: SEMICONDUCTOR
+  indicators:
+    - {key: inventory_cycle,      label: 库存周期,     proxy: inventory_vs_revenue, available: true}
+    - {key: product_price,        label: ASP/价格,     proxy: gross_margin_trend,   available: true}
+    - {key: orders_demand,        label: 下游需求,     proxy: revenue_acceleration, available: true}
+    - {key: contract_liability,   label: 合同负债,     proxy: contract_liab_yoy,    available: true}
+    - {key: capacity_utilization, label: 产能利用率,   proxy: null,                 available: false}
+  data_gap_note: "晶圆厂稼动率/Wafer 出货/TrendForce 价格数据不可得，用库存周转 + 毛利率趋势代理"
+
+电力设备:
+  template: MANUFACTURING
+  indicators:
+    - {key: orders_demand,        label: 在手订单/排产, proxy: revenue_acceleration, available: true}
+    - {key: contract_liability,   label: 合同负债,      proxy: contract_liab_yoy,    available: true}
+    - {key: inventory_cycle,      label: 库存周期,      proxy: inventory_vs_revenue, available: true}
+    - {key: product_price,        label: 产品价格,      proxy: gross_margin_trend,   available: true}
+  data_gap_note: "招投标/排产数据不可得，用合同负债与收入加速度代理"
+
+食品饮料:
+  template: CONSUMER
+  indicators:
+    - {key: orders_demand,        label: 动销/客流,   proxy: revenue_acceleration, available: true}
+    - {key: inventory_cycle,      label: 渠道库存,    proxy: inventory_vs_revenue, available: true}
+    - {key: product_price,        label: 提价/客单价, proxy: gross_margin_trend,   available: true}
+    - {key: contract_liability,   label: 预收款,      proxy: contract_liab_yoy,    available: true}
+  data_gap_note: "同店/客流/渠道库存需尼尔森或公司交流，用收入加速度 + 库存周转代理"
+
+医药生物:
+  template: DEFAULT
+  indicators:
+    - {key: orders_demand,        label: 需求,     proxy: revenue_acceleration, available: true}
+    - {key: product_price,        label: 价格,     proxy: gross_margin_trend,   available: true}
+    - {key: inventory_cycle,      label: 库存,     proxy: inventory_vs_revenue, available: true}
+    - {key: other,                label: 审批/临床, proxy: null,                 available: false}
+  data_gap_note: "药审/临床进展需药监局与医药魔方数据，当前不可得"
+
+计算机:
+  template: SOFTWARE
+  indicators:
+    - {key: contract_liability,   label: 合同负债/预收, proxy: contract_liab_yoy,    available: true}
+    - {key: orders_demand,        label: 新签订单,      proxy: revenue_acceleration, available: true}
+    - {key: product_price,        label: 毛利率,        proxy: gross_margin_trend,   available: true}
+  data_gap_note: "ARR/客户数/ARPU 需公司披露口径，用合同负债 + 收入加速度代理"
+
+汽车:
+  template: MANUFACTURING
+  indicators:
+    - {key: orders_demand,        label: 排产/销量, proxy: revenue_acceleration, available: true}
+    - {key: inventory_cycle,      label: 库存周期,  proxy: inventory_vs_revenue, available: true}
+    - {key: product_price,        label: 均价,      proxy: gross_margin_trend,   available: true}
+    - {key: contract_liability,   label: 合同负债,  proxy: contract_liab_yoy,    available: true}
+  data_gap_note: "乘联会周度上险/批发数据不可得，用收入加速度与库存周转代理"
+
+钢铁:
+  template: CYCLE
+  indicators:
+    - {key: product_price,        label: 钢价,     proxy: industry_price_momentum, available: true}
+    - {key: inventory_cycle,      label: 社会库存, proxy: inventory_vs_revenue,    available: true}
+    - {key: orders_demand,        label: 需求,     proxy: revenue_acceleration,    available: true}
+  data_gap_note: "Mysteel 高炉开工率与钢材社会库存不可得，用行业指数动量代理"
+
+煤炭:
+  template: CYCLE
+  indicators:
+    - {key: product_price,        label: 煤价,   proxy: industry_price_momentum, available: true}
+    - {key: orders_demand,        label: 需求,   proxy: revenue_acceleration,    available: true}
+    - {key: inventory_cycle,      label: 库存,   proxy: inventory_vs_revenue,    available: true}
+  data_gap_note: "港口库存与日耗需 CCTD/煤炭资源网数据，不可得"
+
+有色金属:
+  template: CYCLE
+  indicators:
+    - {key: product_price,        label: 金属价格, proxy: industry_price_momentum, available: true}
+    - {key: inventory_cycle,      label: 库存,     proxy: inventory_vs_revenue,    available: true}
+    - {key: orders_demand,        label: 需求,     proxy: revenue_acceleration,    available: true}
+  data_gap_note: "LME/SHFE 库存与冶炼开工率不可得"
+
+房地产:
+  template: DEFAULT
+  indicators:
+    - {key: orders_demand,        label: 销售,     proxy: revenue_acceleration, available: true}
+    - {key: contract_liability,   label: 合同负债, proxy: contract_liab_yoy,    available: true}
+    - {key: inventory_cycle,      label: 存货,     proxy: inventory_vs_revenue, available: true}
+  data_gap_note: "百城成交与去化周期不可得，用合同负债与收入加速度代理"

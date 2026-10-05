@@ -1,0 +1,409 @@
+# =============================================================================
+# 基本面反转 Big Fish Agent —— 全局配置
+# 规格书第 5/6/7/13/18/30/32/33/34/48/62/65 节的所有权重与阈值集中在此处，
+# 代码不写死任何参数。
+# =============================================================================
+project:
+  name: 基本面反转 Big Fish Agent
+  phase: 5
+  as_of: "20260930"          # 本轮评估基准日（最新完整交易日）
+  timezone: Asia/Shanghai
+
+data:
+  start_date: "20240101"     # 行情预热期（MA120 / 250日结构 / 相对强弱需要）
+  end_date: "auto"           # auto = 每次跑批取当天；自动更新靠它推进区间
+  analysis_start: "20250101" # 生命周期与回测有效起点
+  fina_start_period: "20230331"   # 财务报告期起点（YoY/QoQ/加速度需要 8+ 个季度）
+  fina_end_period: "20260630"
+  moneyflow_days: 120        # 聪明钱因子需要的最近交易日数
+  raw_dir: data/raw
+  processed_dir: data/processed
+  report_dir: output
+  benchmark: "000300.SH"
+  broad_benchmark: "000852.SH"
+  indices:
+    "000001.SH": 上证指数
+    "000300.SH": 沪深300
+    "000905.SH": 中证500
+    "000852.SH": 中证1000
+    "399006.SZ": 创业板指
+    "000688.SH": 科创50
+  industry_source: SW2021     # 申万一级（2021 版）
+  include_boards: ["主板", "创业板", "科创板", "北交所"]
+
+# -----------------------------------------------------------------------------
+# LEVEL 1 · Market Regime（只影响交易优先级，不删除基本面候选）
+# -----------------------------------------------------------------------------
+regime:
+  ma_windows: [20, 60]
+  breadth_windows: [5, 20]
+  high_low_window: 60
+  risk_on_threshold: 60
+  risk_off_threshold: 35
+  # 规格书第 62/65 节：市场状态影响动作优先级
+  action_priority:
+    "Risk On": 1.0
+    "Neutral": 0.85
+    "Risk Off": 0.6
+
+# -----------------------------------------------------------------------------
+# LEVEL 2 · Opportunity Density Score（规格书第 6.5 节，满分 100）
+# -----------------------------------------------------------------------------
+ods:
+  weights:
+    fundamental_trend: 0.30
+    capital_trend: 0.20
+    earnings_revision: 0.20
+    price_inventory_cycle: 0.15
+    valuation_position: 0.10
+    policy_catalyst: 0.05
+  windows:
+    short: 20
+    medium: 60
+    revision: 90
+  relative_benchmark: "000300.SH"
+  thresholds:
+    high_density: 80
+    good: 70
+    watch: 60
+  min_universe_size: 5
+  renormalize_on_missing: true
+  min_factor_coverage: 0.5
+
+# -----------------------------------------------------------------------------
+# LEVEL 3 · Fundamental Reversal Score（规格书第 8~13 节，满分 100）
+# -----------------------------------------------------------------------------
+frs:
+  weights:
+    revenue: 20
+    profit: 25
+    margin: 15
+    cashflow: 15
+    quality: 10
+    special: 15
+  # 回测暴露的问题：加分制把"从 -30% 到 -29%"与"从 -5% 到 +30%"给成同一个分。
+  # 因此把 FRS 拆成「结构分（规则加分：方向对不对）」+「幅度分（截面分位：改善有多大）」。
+  structure_weight: 0.65
+  magnitude_weight: 0.35
+  # 低基数：**验证结论——不做降级**。
+  # 早先依据失败案例库（亏损样本内部的亏损幅度）认为低基数最差，但那是条件概率统计，
+  # 不能回答"该类别整体是否更差"。改用无条件均值比较后（见 docs/07）：
+  #   改进前面板 低基数组 +5.55% vs 其余 +4.19%（+1.36pp，反而更好）
+  #   改进后面板 低基数组 +5.36% vs 其余 +4.29%（+1.07pp，仍然更好）
+  # 低基数与"亏损后恢复"高度重合，本就是反转策略要找的对象，因此只做披露（低基数需说明），
+  # 不降级、不封顶。保留参数是为了让后续实验可以直接改写。
+  low_base_discount: 1.0
+  # ---------------------------------------------------------------------------
+  # 金融行业专用规则（银行 / 非银金融）
+  # 回测暴露：银行保险没有毛利、存货、应收、合同负债，用制造业规则会因"覆盖率不足"
+  # 被判 DATA INCOMPLETE；而它们的利润又高度受投资收益波动影响（例如中国人寿
+  # 2026Q2 单季收入同比 +164%、归母 +848%，主因是投资类收益计入收入）。
+  # 因此金融股改用「TTM 口径 + 净资产 + ROE/ROA + 投资收益占比」这一套规则。
+  # ---------------------------------------------------------------------------
+  financial_industries: ["银行", "非银金融"]
+  financial_rules:
+    revenue_ttm_two_quarter_improve: 5    # TTM 收入同比连续两季改善
+    revenue_ttm_turn_positive: 5          # TTM 收入同比由负转正
+    profit_ttm_two_quarter_improve: 5     # TTM 归母同比连续两季改善
+    profit_ttm_turn_positive: 5           # TTM 归母同比由负转正
+    profit_ttm_faster_than_revenue: 5     # TTM 利润增速快于 TTM 收入增速
+    deducted_ttm_improve: 5               # TTM 扣非同步改善
+    net_margin_bottoming: 5               # 净利率触底回升
+    net_margin_above_4q_avg: 5            # 净利率高于过去 4 季均值
+    equity_growth_positive: 5             # 净资产同比正增长（内生资本积累）
+    asset_growth_healthy: 5               # 总资产同比在 0~30% 区间（扩张但不失控）
+    roe_bottoming: 5                      # ROE 触底回升
+    roa_or_roic_inflection: 5             # ROA / ROIC 拐点向上
+    investment_income_ratio_declining: 5  # 投资收益占利润比重下降（利润不是靠投资收益）
+    forecast_positive: 5                  # 最新业绩预告为正
+  # 规格书第 8/9/10 节的具体加分项
+  rules:
+    revenue_two_quarter_improve: 5
+    revenue_turn_positive: 5
+    revenue_accelerate: 5
+    revenue_beat_industry: 5
+    profit_narrow_loss: 5
+    profit_turn_positive: 5
+    profit_accelerate: 5
+    profit_grow_faster_than_revenue: 5
+    profit_deducted_improve: 5
+    margin_bottoming: 5
+    margin_continuous_improve: 5
+    margin_above_4q_avg: 5
+    cashflow_profit_and_cfo_up: 5
+    cashflow_inventory_down: 3
+    cashflow_receivable_improve: 3
+    cashflow_debt_relief: 2
+    quality_roic_bottoming: 5
+    quality_roe_inflection: 5
+    special_revenue_accel_with_order: 5
+    special_margin_expansion: 5
+    special_forecast_positive: 5
+  # 低质量反转扣分
+  penalties:
+    cfo_persistently_negative: 4
+    receivable_surge: 3
+    inventory_surge: 3
+    min_quarters: 6            # 不足 6 个季度 → 该股 FRS 标记 DATA INCOMPLETE
+  min_coverage: 0.5            # 可用加分项覆盖率低于该值 → FRS 视为缺失（不参与 BFS）
+
+# -----------------------------------------------------------------------------
+# LEVEL 4 · Leading Indicator Score（规格书第 18 节，满分 100）
+# -----------------------------------------------------------------------------
+lis:
+  weights:
+    orders_demand: 25
+    product_price: 20
+    inventory_cycle: 15
+    capacity_utilization: 10
+    contract_liability: 10
+    industry_highfreq: 10
+    management_guidance: 5
+    other: 5
+  # 按行业自动套用的前瞻指标模板（规格书第 16 节）
+  templates_file: configs/industry_leading_indicators.yaml
+  min_coverage: 0.45           # 覆盖率不足 → LIS 视为缺失，避免"只剩一个分项还拿满分"
+
+# -----------------------------------------------------------------------------
+# LEVEL 5 · Price Confirmation Score（规格书第 19~25 节，满分 100）
+# -----------------------------------------------------------------------------
+pcs:
+  # 回测暴露的问题：「价格确认后仍下跌」平均亏 12.3% → 区分"突破确认"与"突破失败"
+  breakout:
+    lookback: 20           # 近 20 个交易日内是否出现过突破
+    hold_tolerance: 0.98   # 收盘跌回突破位 2% 以下 → 判定突破失败
+  weights:
+    price_structure: 25
+    moving_average: 15
+    relative_strength: 20
+    volume: 15
+    smart_money: 15
+    news_asymmetry: 10
+  lookback:
+    structure: 250
+    base: 60
+    rs: 60
+    volume_short: 20
+    volume_long: 120
+  volume_ratio_target: 1.4   # 规格书第 23 节：1.3~1.5 为理想
+  chase_limit: 1.15          # 规格书第 65 节：Price / MA20 > 1.15 → WAIT_PULLBACK
+  min_coverage: 0.5
+
+# -----------------------------------------------------------------------------
+# LEVEL 6 · Revaluation Potential Score（规格书第 28~30 节）
+# -----------------------------------------------------------------------------
+rps:
+  # 回测失败案例库：亏损最大的类别是"买入时估值已高"（平均 -14.7%）
+  # → 估值从"15% 权重"升级为"硬约束"（超限直接封顶等级、禁止试探仓）
+  gate:
+    pe_vs_industry_multiple: 1.5    # 当前 PE > 行业中位数 × 1.5 → 估值偏高
+    min_base_upside: 0.15           # Base 情景上行空间 < 15% → 估值偏高
+    severe_pe_multiple: 2.0         # 更严一档 → 封顶 C 级
+    severe_upside: 0.0
+  scenarios:
+    bear_multiple: 0.7       # 熊市情景：盈利 × 系数
+    base_multiple: 1.0
+    bull_multiple: 1.6
+    bear_pe_factor: 0.8      # 行业中枢 PE × 系数
+    base_pe_factor: 1.0
+    bull_pe_factor: 1.25
+  pe_bounds: [8, 60]         # 目标 PE 截断，避免极端值放大"空间"
+  min_pe_samples: 5          # 行业中位数 PE 样本不足 → 回退全市场中枢
+  mapping:                   # 规格书第 30 节：Expected Upside → 分档
+    very_large: 80
+    large: 50
+    good: 30
+    moderate: 15
+
+# -----------------------------------------------------------------------------
+# Catalyst Score（规格书第 31 节）
+# -----------------------------------------------------------------------------
+catalyst:
+  min_coverage: 0.5
+  weights:
+    earnings_event: 0.35     # 已发业绩预告/快报 + 临近财报披露日
+    capital_action: 0.25     # 回购 / 增持
+    industry_supply: 0.20    # 行业供给收缩（行业指数 + 库存代理）
+    price_action: 0.20       # 产品涨价代理（行业毛利率 / 行业价格趋势）
+
+# -----------------------------------------------------------------------------
+# Big Fish Score（规格书第 32 节）
+# -----------------------------------------------------------------------------
+bfs:
+  weights:
+    frs: 0.30
+    lis: 0.20
+    pcs: 0.20
+    ods: 0.10
+    rps: 0.15
+    catalyst: 0.05
+  grades:                    # 规格书第 33 节
+    S: 85
+    "A+": 80
+    A: 75
+    B: 65
+    C: 55
+  # 规格书第 34 节：S 级硬门槛（不能只看总分）
+  s_gate:
+    frs: 75
+    lis: 70
+    pcs: 70
+
+# -----------------------------------------------------------------------------
+# 候选生成器：抓鱼分 / 避雷分 / 漏斗输出（2026-10-05 新增）
+# 依据 docs/11：这套评分的真实优势在「避雷」（踩雷率 10.8% vs 全市场 11.6%，
+# 而追涨因子 33.2%），抓大鱼只比随机高 20%；且召回率低的主因是名单太小
+# （Top20→Top100 精度只降 1.5pp，召回 ×3.6）。
+# 因此把「上行弹性」与「下限保护」拆成两个分数，并改成漏斗输出。
+# -----------------------------------------------------------------------------
+scores:
+  upside:                    # 抓鱼分：上行弹性（研究员找票用）
+    weights:
+      frs: 0.40              # 基本面反转强度
+      lis: 0.25              # 领先指标（越早越好）
+      rps: 0.20              # 估值重构空间
+      ods: 0.10              # 所处鱼塘
+      catalyst: 0.05         # 事件催化
+  downside:                  # 避雷分：下限保护（组合/风控用，越高越安全）
+    weights:
+      pcs: 0.35              # 价格结构是否已破位
+      kill: 0.25             # Kill Signal 数量
+      valuation: 0.20        # 估值硬约束
+      data_quality: 0.20     # 证据链完整度
+    kill_penalty_per_signal: 33    # 每个 Kill 扣 33 分
+    valuation_penalty: {expensive: 35, severe: 25}
+
+funnel:
+  watchlist: 100             # 观察池：召回优先（Top100 精度 17.6% / 召回 8.3%）
+  focus: 20                  # 重点：人工深研的入口
+  cards: 5                   # 卡片：完整论证
+  early_channel:             # 早期线索榜：基本面已确认、价格尚未确认
+    frs_min: 70
+    pcs_max: 60
+    size: 20
+  # 观察池排序（2026-10-05 实测决定，见 docs/11 第 2.3 节）：
+  #   BFS Top100：大鱼率 17.6% / 踩雷率 10.2% / 召回@6M 8.3%   ← 召回与风险两项都最优
+  #   US  Top100：大鱼率 17.7% / 踩雷率 11.3% / 召回 7.4%
+  #   均值     ：大鱼率 17.9% / 踩雷率 10.8% / 召回 7.7%
+  # 三者差异在噪声内，按"候选生成器以召回优先 + 风险次之"选 BFS。
+  rank_by: bfs
+  # 避雷分下限（0 = 不启用）。实测避雷分 Q1→Q5 可把踩雷率从 14.0% 压到 9.1%，
+  # 且不损失大鱼率；若要启用，建议用滚动窗口重新验证阈值后再改。
+  downside_floor: 0
+  # 注意力配额（默认关闭）。2026-10-05 实测（docs/11 第 2.4 节）：
+  #   观察池不限额 大鱼率 17.6% → 行业≤6/类型≤15 后 15.6%（跌破全市场基准）
+  #   重点榜不限额 19.1% → 行业≤4/类型≤6 后 17.2%
+  # 而最大反转类型占比只从 31% 降到 23%——**代价不成比例**，因此默认不删名额，
+  # 改为在输出里标注「同行业第 N 只 / 同类型第 N 只」，把注意力配额交给人来判断。
+  quota:
+    watchlist: {max_per_industry: 0, max_per_reversal_type: 0}
+    focus: {max_per_industry: 0, max_per_reversal_type: 0}
+
+# -----------------------------------------------------------------------------
+# 网站与自动更新（Phase 7）
+# -----------------------------------------------------------------------------
+site:
+  title: 基本面反转 Big Fish Agent
+  port: 8501
+  refresh_seconds: 60          # 页面自动刷新间隔（数据集版本变化时才重绘）
+  running_refresh_seconds: 5   # 更新进行中的刷新间隔
+
+update:
+  auto_enabled: true           # 网站可在「运行与维护」页临时开关（写入 update_settings.json）
+  timezone: Asia/Shanghai
+  keep_history: 30             # 保留最近多少次更新记录
+  steps: [fetch, daily, flicker]   # 每次更新的步骤（fetch=增量抓数 / daily=全链路跑批 / flicker=观察池跟踪）
+  jobs:
+    - {name: 盘前更新, time: "08:30", days: mon-fri, kind: full, enabled: true}
+    - {name: 收盘更新, time: "16:30", days: mon-fri, kind: full, enabled: true}
+
+# -----------------------------------------------------------------------------
+# 生命周期状态机（规格书第 36~43 节）
+# -----------------------------------------------------------------------------
+lifecycle:
+  fundamental_watch: {frs_min: 50}
+  early_reversal: {frs_min: 60}
+  turnaround_confirmed: {frs_min: 70, lis_min: 65}
+  price_confirmed: {frs_min: 70, pcs_min: 65}
+  acceleration: {frs_min: 70, pcs_min: 65, lis_min: 65}
+  mature: {bfs_min: 75, rps_max: 30}
+
+# -----------------------------------------------------------------------------
+# Kill Signal（规格书第 44~48 节）
+# -----------------------------------------------------------------------------
+kill:
+  fundamental:
+    revenue_accel_decline_quarters: 2
+    margin_reverse_quarters: 2
+    inventory_surge_yoy: 0.5
+    receivable_surge_yoy: 0.5
+    cfo_deteriorate: true
+    industry_price_down: true
+  technical:
+    break_ma60: true
+    break_structure_low: true
+    breakout_failure: true
+    rs_weakening: -0.08
+    volume_dump: -0.05
+  thesis:
+    industry_trend_reverse: true
+    forecast_negative: true
+  rules:                     # 规格书第 48 节
+    warning: 1
+    reduce: 2
+    exit: 3
+
+# -----------------------------------------------------------------------------
+# 过滤器（规格书第 49~50 节）
+# -----------------------------------------------------------------------------
+filters:
+  value_trap:
+    max_pe: 25
+    max_pb: 2.0
+  fake_turnaround:
+    # 回测验证：只按"一次性收益占比高"判定 → 命中组并不更差（+0.14~0.28pp），说明定义过宽。
+    # 收窄为：必须同时满足「归母在增长、扣非在下降（或显著落后）」才算假反转。
+    one_off_ratio: 0.5
+    require_dedt_divergence: true
+    dedt_lag_gap: 0.3
+    low_base_ratio: 0.3      # 去年同期利润 / 近 4 季均值 低于该值 → 低基数
+  risk_block:
+    min_amount: 3000.0       # 万元，成交额下限（流动性）
+    max_pledge_ratio: 60.0   # 质押比例上限（%）
+
+# -----------------------------------------------------------------------------
+# 交易动作（规格书第 62~65 节）
+# -----------------------------------------------------------------------------
+action:
+  starter_position: {frs_min: 70, pcs_min: 65, bfs_min: 75}
+  add_on: {require_price_breakout: true, require_volume_confirm: true}
+  pool:
+    top_n_ranking: 20
+    top_n_watchlist: 10
+    top_n_cards: 5
+    max_per_industry: 4
+
+# -----------------------------------------------------------------------------
+# Phase 6 · 历史回测（规格书第 70~75、89 节）
+# -----------------------------------------------------------------------------
+backtest:
+  data_start: "20180102"     # 行情回补起点（为 250 日窗口与 MA120 留出预热）
+  start: "20190101"          # 有效回测起点（首个可用信号月）
+  end: "20260930"
+  freq: "M"                  # 月度调仓（每期最后一个交易日为信号日）
+  in_sample_end: "20231231"  # 样本内 / 样本外分界
+  horizons: [20, 60, 120, 250]
+  commission_bps: 3.0
+  slippage_bps: 5.0
+  hygiene:
+    min_history_bars: 60
+    max_entry_gap: 0.095
+    exclude_extreme_move: 0.30
+    min_obs_ratio: 0.8
+
+# -----------------------------------------------------------------------------
+# 数据可靠性（规格书第 67 节）
+# -----------------------------------------------------------------------------
+data_quality:
+  require_ann_date: true     # 财务数据必须带公告日（point-in-time）
+  confidence_default: 0.6

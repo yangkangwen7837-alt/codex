@@ -1,0 +1,19 @@
+# ===========================================================================
+# 运行依赖（扫描项目 import 后人工精简；生成逻辑见 scripts/check_deploy.py）
+#   - 只列项目真正用到的第三方包，标准库不写
+#   - 用 >= 下限而不是 == 锁死：本地是 Python 3.14，Streamlit Cloud 一般是 3.11/3.12，
+#     锁死版本可能装不上；下限保证 API 兼容
+# ===========================================================================
+streamlit>=1.57
+pandas>=2.2
+numpy>=1.26
+pyarrow>=15.0        # pandas.read_parquet / to_parquet 的引擎（代码不直接 import）
+PyYAML>=6.0
+tushare>=1.4
+APScheduler>=3.10,<4
+
+# 扫描到但不使用、因此**不列**：plotly / altair / sqlalchemy / psycopg2 / requests
+# （图表全部用 Streamlit 原生 st.line_chart / st.bar_chart / st.scatter_chart）
+
+# 本地实测：Python 3.14.7 / streamlit 1.64.0 / pandas 3.0.5 / tushare 1.4.29 /
+#           APScheduler 3.11.3 / PyYAML 6.x

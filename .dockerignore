@@ -1,0 +1,26 @@
+.git
+.gitignore
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.env
+.env.*
+.streamlit/secrets.toml
+secrets.toml
+*.log
+logs/
+
+# 大数据与中间产物（镜像里不含原始数据；如需数据请挂载卷）
+data/raw/
+data/processed/
+tmp/
+output/
+dist/
+build/
+.DS_Store
+Thumbs.db
