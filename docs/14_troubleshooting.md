@@ -130,3 +130,64 @@ git config --global --add safe.directory "D:/GPT/基本面反转交易策略"
 
 `scripts/check_deploy.py` 已经内置自愈：检测到这个报错时会自动带上
 `-c safe.directory=...` 重试，所以自检本身不受影响。
+
+## 5. 事件：浏览器显示 "Connection error"（2026-10-07）
+
+### 现象
+
+页面能打开 HTML 外壳，但随即报 `Connection error — Is Streamlit still running?`。
+
+### 定位
+
+| 检查 | 命令 | 结果 |
+|---|---|---|
+| 端口是否有监听 | `netstat -ano -p tcp`（筛 `:8501`） | **没有任何监听** → 站点进程已经死了 |
+| 是否有 python 进程 | `tasklist /fi "imagename eq python.exe"` | 只剩一个无关进程 |
+| 站点日志 | `output/site.log` | 最后一条只有"由巡检重启"标题、没有启动输出 → 进程**被外部结束**（崩溃会留 traceback） |
+
+结论：`Connection error` 是**服务端进程已死**的正确提示，不是前端故障；
+浏览器标签仍停在旧会话上，因此必须重新加载页面。
+
+### 根因：站点是被"沙箱进程"拉起来的
+
+网站此前由 `site_patrol.py`（在 Codex 沙箱内）用 `subprocess.Popen` 启动，属于沙箱进程的后代。
+**沙箱会话一结束，整棵进程树被一起结束**，网站跟着消失，只能等下一次巡检（每天 4 次）拉回来 ——
+这就是 10-06、10-07 两次掉线的来源，中间存在打不开的空窗期。
+
+### 修复：改由 Windows 计划任务常驻（不再依赖任何会话）
+
+```powershell
+schtasks /Create /TN BigFishSite /TR "\"C:\Python314\python.exe\" \"D:\GPT\基本面反转交易策略\scripts\ensure_site.py\"" /SC MINUTE /MO 5 /RL LIMITED /F
+schtasks /Create /TN BigFishUpdateAM /TR "\"C:\Python314\python.exe\" \"D:\GPT\基本面反转交易策略\scripts\run_update_once.py\"" /SC WEEKLY /D MON,TUE,WED,THU,FRI /ST 08:30 /RL LIMITED /F
+schtasks /Create /TN BigFishUpdatePM /TR "\"C:\Python314\python.exe\" \"D:\GPT\基本面反转交易策略\scripts\run_update_once.py\" --publish" /SC WEEKLY /D MON,TUE,WED,THU,FRI /ST 16:30 /RL LIMITED /F
+```
+
+* `BigFishSite`：每 5 分钟健康检查，**只有掉线才拉起**（健康时不写文件、不重启），
+  空窗期从"最多 6 小时"缩到"最多 5 分钟"；
+* `BigFishUpdateAM` / `BigFishUpdatePM`：替代站点内置调度器做 08:30 / 16:30 更新，
+  16:30 那次顺带把快照发布到 GitHub（`--publish`）。
+
+### 附带发现：某些包只存在于沙箱层
+
+修复时站点内置 APScheduler 报 `No module named 'apscheduler'`。排查确认：**同一个路径
+`C:\Users\12363\AppData\Roaming\Python\Python314\site-packages`，沙箱内外看到的内容不同**。
+
+| 上下文 | streamlit | apscheduler |
+|---|---|---|
+| Codex 沙箱内（会话执行命令） | 1.64.0 | **有**（3.11.3） |
+| 沙箱外（Windows 计划任务，普通身份） | 1.65.0 | **没有** |
+
+因此在沙箱内 `pip install apscheduler` 会一直报 "already satisfied"，而普通身份的进程依然 import 失败。
+**结论：不要依赖"仅沙箱内可用"的包做常驻服务**；定时逻辑交给 Windows 计划任务（本轮已改），
+或由用户在普通终端自行安装。
+
+### 立即恢复办法
+
+站点已在跑时，浏览器按 **Ctrl + Shift + R** 强制重新加载即可；
+若确认端口没有监听，执行 `python scripts/ensure_site.py`（或等 5 分钟计划任务）。
+
+### 经验教训（补充）
+
+4. **"网页打不开"先看端口有没有监听**：`netstat` 一秒定性，比从代码查起快得多；
+   进程被外部结束时日志里不会有 traceback，可用来区分"被杀"与"崩溃"。
+5. **常驻服务不要从沙箱/临时会话里启动**：会话结束会带走整棵进程树。

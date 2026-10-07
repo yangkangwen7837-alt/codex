@@ -41,7 +41,21 @@ python scripts/start_site.py --port 8510      # 换端口
 python scripts/start_site.py --no-scheduler   # 只起网站
 python scripts/run_scheduler.py               # 只跑调度器（无人值守）
 python scripts/site_patrol.py --restart       # 巡检（网站掉线自动重启）
+python scripts/ensure_site.py                 # 看护：没在跑就拉起来（计划任务每 5 分钟调用）
 ```
+
+**常驻方式（Windows 计划任务）**：网站与定时更新交给计划任务，不依赖任何前端会话，
+重启电脑/关闭 Codex 都不影响：
+
+| 任务名 | 频率 | 作用 |
+|---|---|---|
+| `BigFishSite` | 每 5 分钟 | 跑 `scripts/ensure_site.py`：网站没在跑就拉起来（健康时不写文件、不重启） |
+| `BigFishUpdateAM` | 工作日 08:30 | 跑 `scripts/run_update_once.py`：盘前增量抓数 + 跑批 |
+| `BigFishUpdatePM` | 工作日 16:30 | 同上，跑完再把快照发布到 GitHub（`--publish`） |
+
+> 为什么不用站点内置的 APScheduler：它需要 `apscheduler` 包，而本机该包只存在于
+> Codex 沙箱层，普通身份启动的进程看不到。交给 Windows 计划任务后反而更可靠，
+> 站点自身的调度器关掉不影响功能（`运行与维护` 页会显示"未启动"，属预期）。
 
 **巡检**：`site_patrol.py` 检查网站存活（含前端资源）、**线上站点（Streamlit Cloud）**、
 沙箱环境、工作区目录 ACL、数据新鲜度与最近更新状态，产出 `output/patrol_report.md`；
