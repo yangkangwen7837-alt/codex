@@ -25,7 +25,7 @@ python scripts/run_backtest.py       # Phase 6：7.7 年月度调仓回测 + 自
 python scripts/run_backtest.py --from-panel --name backtest_2019_2026   # 只重出报告
 python scripts/watchlist_flicker.py --write   # 观察池闪烁率跟踪（真实每日口径）
 
-python scripts/start_site.py         # 启动网站（含自动更新）→ http://localhost:8501
+python scripts/start_site.py         # 启动网站 → http://localhost:8510（端口见 configs/default.yaml）
 ```
 
 ## 1.1 网站（Phase 7）
@@ -37,7 +37,7 @@ APScheduler 在工作日 08:30（盘前）与 16:30（收盘）自动执行
 页面上也能手动「立即更新」，并可开关自动更新。细节见 [docs/13_website.md](docs/13_website.md)。
 
 ```bash
-python scripts/start_site.py --port 8510      # 换端口
+python scripts/start_site.py --port 8520      # 临时换端口（默认取 site.port = 8510）
 python scripts/start_site.py --no-scheduler   # 只起网站
 python scripts/run_scheduler.py               # 只跑调度器（无人值守）
 python scripts/site_patrol.py --restart       # 巡检（网站掉线自动重启）
@@ -52,6 +52,11 @@ python scripts/ensure_site.py                 # 看护：没在跑就拉起来�
 | `BigFishSite` | 每 5 分钟 | 跑 `scripts/ensure_site.py`：网站没在跑就拉起来（健康时不写文件、不重启） |
 | `BigFishUpdateAM` | 工作日 08:30 | 跑 `scripts/run_update_once.py`：盘前增量抓数 + 跑批 |
 | `BigFishUpdatePM` | 工作日 16:30 | 同上，跑完再把快照发布到 GitHub（`--publish`） |
+
+> **端口说明**：网站地址是 `http://localhost:8510`。原先用 8501，但 8501 会被其它项目
+> （例如 `fund-sales-workbench` 的 Docker 容器）占用，被抢端口时本站就起不来，
+> 所以改用专用端口 8510。端口只在 `configs/default.yaml` 的 `site.port` 里改一处，
+> 启动脚本、巡检、看护脚本都会自动跟随。
 
 > 为什么不用站点内置的 APScheduler：它需要 `apscheduler` 包，而本机该包只存在于
 > Codex 沙箱层，普通身份启动的进程看不到。交给 Windows 计划任务后反而更可靠，
@@ -85,7 +90,7 @@ python -m venv .venv
 source .venv/bin/activate
 
 pip install -r requirements.txt
-streamlit run apps/streamlit_app.py     # → http://localhost:8501
+streamlit run apps/streamlit_app.py --server.port 8510   # → http://localhost:8510
 ```
 
 ### Environment / Secrets

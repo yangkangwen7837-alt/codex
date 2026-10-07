@@ -191,3 +191,44 @@ schtasks /Create /TN BigFishUpdatePM /TR "\"C:\Python314\python.exe\" \"D:\GPT\�
 4. **"网页打不开"先看端口有没有监听**：`netstat` 一秒定性，比从代码查起快得多；
    进程被外部结束时日志里不会有 traceback，可用来区分"被杀"与"崩溃"。
 5. **常驻服务不要从沙箱/临时会话里启动**：会话结束会带走整棵进程树。
+
+## 6. 事件：站点起不来，因为 8501 被其它项目占用（2026-10-07）
+
+### 现象
+
+重启后仍然"无法运行"，但健康检查返回 200 —— 看起来正常却打不开本项目的页面。
+
+### 定位
+
+```bash
+netstat -ano -p tcp            # 8501 → LISTENING，PID 19852
+powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"ProcessId=19852\" | % {$_.Name; $_.CommandLine}"
+# → com.docker.backend.exe
+docker ps
+# → fund-sales-workbench:1.0.0  ...  0.0.0.0:8501->8501/tcp  fund-sales-app-1
+```
+
+**8501 被另一个项目的 Docker 容器（`fund-sales-workbench`）发布并占用**，
+Docker 的用户态代理接管了 `0.0.0.0:8501`。于是：
+
+* 浏览器打开 `localhost:8501` 看到的是**别人的应用**（同样是 Streamlit，所以健康检查也返回 200，极易误判）；
+* 我们的 `start_site.py` 绑定 8501 失败 → 起不来，看护脚本每 5 分钟拉一次都失败。
+
+### 修复：给本项目一个专用端口
+
+`configs/default.yaml` 的 `site.port` 从 `8501` 改为 **`8510`**。
+启动脚本、巡检（`site_patrol.py`）、看护（`ensure_site.py`）、
+`check_live_site.py` 全部从配置读端口，改一处即可，无需改任务。
+
+```bash
+python scripts/ensure_site.py          # 拉起（现在监听 127.0.0.1:8510）
+python scripts/check_live_site.py      # 默认检查配置里的端口
+```
+
+### 经验教训（补充）
+
+6. **健康检查返回 200 不等于"你的应用在跑"**：Streamlit 的 `/_stcore/health` 对任何
+   Streamlit 应用都返回 `ok`。判断"是不是我的应用"要看**监听进程**（`netstat` → PID → 进程名/命令行），
+   这也是 `ensure_site.py` 现在会额外报告"端口被其它程序占用"的原因。
+7. **固定端口会被抢**：本机同时跑多个项目/容器时，给每个项目分配独立端口，
+   并把端口写进配置而不是散落在命令和脚本里。

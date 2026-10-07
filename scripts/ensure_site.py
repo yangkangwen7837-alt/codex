@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import socket
 import subprocess
 import sys
 import time
@@ -37,6 +38,15 @@ def site_ok(port: int, timeout: int = 5) -> bool:
         with urllib.request.urlopen(f"http://localhost:{port}/_stcore/health", timeout=timeout) as resp:
             return resp.status == 200 and resp.read().decode(errors="replace").strip().lower().startswith("ok")
     except Exception:  # noqa: BLE001
+        return False
+
+
+def _port_in_use_by_other(port: int, timeout: int = 3) -> bool:
+    """端口已被占用但不是我们的站点（例如别的项目/容器抢了同一个端口）。"""
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=timeout):
+            return True
+    except OSError:
         return False
 
 
@@ -70,6 +80,7 @@ def main() -> int:
     if site_ok(port):
         result["already_running"] = True
     else:
+        result["port_maybe_taken"] = _port_in_use_by_other(port)
         result["pid"] = start_site(port)
         deadline = time.time() + args.wait
         while time.time() < deadline:
@@ -86,6 +97,9 @@ def main() -> int:
             print(f"网站正常（端口 {port}）")
         elif result["started"]:
             print(f"网站之前没在运行，已拉起（pid {result['pid']}）")
+        elif result.get("port_maybe_taken"):
+            print(f"网站没起来：端口 {port} 已被**其它程序**占用（健康检查来自别的服务）。"
+                  f"请改 configs/default.yaml 的 site.port，或先停掉占用端口的进程。")
         else:
             print(f"网站未恢复：已尝试拉起（pid {result['pid']}），{args.wait} 秒内健康检查仍未通过")
     return 0 if result["ok"] else 1

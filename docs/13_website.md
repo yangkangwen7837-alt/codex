@@ -3,8 +3,8 @@
 ## 1. 启动
 
 ```bash
-python scripts/start_site.py              # 默认 http://localhost:8501
-python scripts/start_site.py --port 8510  # 换端口
+python scripts/start_site.py              # 默认 http://localhost:8510（端口见 configs/default.yaml）
+python scripts/start_site.py --port 8520  # 临时换端口
 python scripts/start_site.py --no-scheduler   # 只起网站，不自动更新
 python scripts/run_scheduler.py           # 只跑调度器（无人值守部署）
 ```

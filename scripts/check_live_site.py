@@ -94,13 +94,22 @@ def check(base: str, timeout: int = 20) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="线上站点健康检查")
-    parser.add_argument("url", nargs="?", default="http://localhost:8501",
-                        help="站点地址，默认 http://localhost:8501")
+    parser.add_argument("url", nargs="?", default=None,
+                        help="站点地址，默认读取 configs/default.yaml 的 site.port（当前 8510）")
     parser.add_argument("--timeout", type=int, default=20)
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
-    result = check(args.url, args.timeout)
+    url = args.url
+    if not url:
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+            from bigfish.config import load_settings  # noqa: PLC0415
+
+            url = f"http://localhost:{int(load_settings().path('site.port', 8510))}"
+        except Exception:  # noqa: BLE001
+            url = "http://localhost:8510"
+    result = check(url, args.timeout)
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result["ok"] else 1
