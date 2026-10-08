@@ -232,3 +232,58 @@ python scripts/check_live_site.py      # 默认检查配置里的端口
    这也是 `ensure_site.py` 现在会额外报告"端口被其它程序占用"的原因。
 7. **固定端口会被抢**：本机同时跑多个项目/容器时，给每个项目分配独立端口，
    并把端口写进配置而不是散落在命令和脚本里。
+
+## 7. 事件：换成计划任务后仍然打不开（2026-10-08 早晨）
+
+### 现象
+
+昨晚 22:39 站点还正常（`http://localhost:8510`），今早打开却连不上；看护任务
+`BigFishSite` 在 08:00 跑过，但**失败**。
+
+### 三个叠加原因
+
+| # | 原因 | 证据 |
+|---|---|---|
+| 1 | 站点仍是**从 Codex 会话里启动的**（我用 `ensure_site.py` 手动拉起过），会话/回合一结束就被回收 | `output/site.log` 最后写入时间 23:16（正是上一轮结束的时刻），此后再无输出 |
+| 2 | 计划任务**默认不允许电池供电时运行**，笔记本拔电/省电时任务被直接拒绝 | `schtasks /Query /V` → `Last Result: -2147020576` = "操作员或系统管理员拒绝了请求" |
+| 3 | 即使由任务启动，子进程仍可能随调用者的作业对象（Job Object）被回收 | 进程树里站点挂在调用者之下 |
+
+### 修复：让任务自己承载站点 + 每 1 分钟看护
+
+| 任务 | 触发 | 作用 |
+|---|---|---|
+| `BigFishSiteRun` | 每天 00:05 + 按需 `schtasks /Run` | **站点载体**：任务进程即网站（`start_site.py --log-to-file`），`RestartOnFailure` 自动重启，`MultipleInstances=IgnoreNew` |
+| `BigFishSite` | 每 1 分钟 | `ensure_site.py`：健康检查不过就用 `schtasks /Run` 唤醒载体任务 |
+
+四个任务统一改成：`AllowStartIfOnBatteries = true`、`DontStopIfGoingOnBatteries = true`、
+`ExecutionTimeLimit = PT0S`（不限时）、`StartWhenAvailable = true`、`MultipleInstances = IgnoreNew`。
+
+设置方式（schtasks 命令行**没有**电池/重启这些开关，必须用 PowerShell）：
+
+```powershell
+$t = Get-ScheduledTask -TaskName BigFishSiteRun
+$s = $t.Settings
+$s.AllowStartIfOnBatteries = $true; $s.DontStopIfGoingOnBatteries = $true
+$s.ExecutionTimeLimit = 'PT0S'; $s.StartWhenAvailable = $true; $s.MultipleInstances = 'IgnoreNew'
+Set-ScheduledTask -TaskName BigFishSiteRun -Settings $s
+```
+
+> 注意：`ONLOGON` 触发需要管理员权限（`schtasks /Create ... /SC ONLOGON` → Access is denied），
+> 所以载体任务用"每天 00:05 + 按需唤醒"的组合，1 分钟看护会覆盖登录后的场景。
+
+### 验证（本次实测）
+
+```
+停止旧站点（pid 2328）→ 健康检查 False
+schtasks /Run /TN BigFishSiteRun → 健康检查 True，监听 pid 16820
+进程链：python.exe(16820) ← python.exe(1140, start_site.py) ← svchost.exe(1560, 任务计划服务) ← services.exe
+```
+
+进程挂在服务进程下，**不再属于任何终端/Codex 会话**，也不会随其退出而消失。
+
+### 经验教训（补充）
+
+8. **看护脚本自己也会被回收**：判断"常驻是否真的常驻"，要看**进程链的父进程是谁**
+   （`Get-CimInstance Win32_Process` 的 `ParentProcessId`），挂在 `svchost.exe` 下才算脱钩。
+9. **计划任务的默认设置会坑人**：电池条件、运行时限、实例策略三项默认值都可能让任务"静默失败"，
+   排查时先看 `Last Result`（`-2147020576` = 被拒绝、`267011` = 从未运行）。

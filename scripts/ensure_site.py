@@ -33,6 +33,11 @@ from bigfish.config import load_settings  # noqa: E402
 LOG_FILE = OUTPUT_DIR / "site.log"
 
 
+def _ps_quote(text: str) -> str:
+    """PowerShell 单引号字符串转义（内部的单引号翻倍）。"""
+    return "'" + text.replace("'", "''") + "'"
+
+
 def site_ok(port: int, timeout: int = 5) -> bool:
     try:
         with urllib.request.urlopen(f"http://localhost:{port}/_stcore/health", timeout=timeout) as resp:
@@ -51,20 +56,62 @@ def _port_in_use_by_other(port: int, timeout: int = 3) -> bool:
 
 
 def start_site(port: int) -> int | None:
-    """以独立进程启动网站（不随调用者退出而结束）。"""
-    env = dict(os.environ)
-    env["PYTHONIOENCODING"] = "utf-8"
-    flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    """启动网站，并让它**脱离当前进程树**。
+
+    为什么不能直接用 subprocess.Popen：
+        Codex 沙箱、计划任务都可能用「作业对象（Job Object）」管理进程，调用者一退出，
+        整棵子进程树会被一起结束 —— 这正是网站反复消失的原因。
+        因此这里优先让 **Windows 计划任务**（BigFishSiteRun）来承载站点进程：
+        进程由任务计划服务创建，不在看护脚本/终端的进程树里，谁退出都不影响它，
+        而且任务本身配置了"失败自动重启 + 允许电池供电"。
+    """
     LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(LOG_FILE, "a", encoding="utf-8") as fh:
         fh.write(f"\n=== {datetime.now().astimezone().isoformat(timespec='seconds')} 由看护脚本拉起 ===\n")
+
+    # 首选：交给计划任务启动（进程不在本进程树里，最稳）
+    try:
+        task = subprocess.run(["schtasks", "/Run", "/TN", "BigFishSiteRun"],
+                              capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", timeout=60)
+        if task.returncode == 0:
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                time.sleep(2)
+                if site_ok(port):
+                    return _site_pid(port)
+            print("（计划任务已触发，但 30 秒内健康检查仍未通过，改用普通方式再试）")
+        else:
+            print(f"（计划任务启动失败：{((task.stdout or '') + (task.stderr or '')).strip()[:160]}，改用普通方式）")
+    except Exception as exc:  # noqa: BLE001
+        print(f"（计划任务启动异常：{type(exc).__name__}: {exc}，改用普通方式）")
+
+    # 兜底：普通方式启动（不依赖计划任务是否存在）
+    env = dict(os.environ)
+    env["PYTHONIOENCODING"] = "utf-8"
+    flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    with open(LOG_FILE, "a", encoding="utf-8") as fh:
+        fh.write(f"\n=== {datetime.now().astimezone().isoformat(timespec='seconds')} 由看护脚本拉起（普通方式） ===\n")
         fh.flush()
         proc = subprocess.Popen(
-            [sys.executable, str(ROOT / "scripts" / "start_site.py"), "--port", str(port)],
+            [sys.executable, str(ROOT / "scripts" / "start_site.py"), "--port", str(port), "--log-to-file"],
             cwd=str(ROOT), env=env, stdout=fh, stderr=subprocess.STDOUT,
             stdin=subprocess.DEVNULL, close_fds=True, creationflags=flags,
         )
     return proc.pid
+
+
+def _site_pid(port: int) -> int | None:
+    """找出监听指定端口的进程号（仅用于日志展示，失败无妨）。"""
+    try:
+        proc = subprocess.run(["powershell", "-NoProfile", "-Command",
+                               f"(Get-NetTCPConnection -LocalPort {port} -State Listen -ErrorAction SilentlyContinue).OwningProcess"],
+                              capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", timeout=30)
+        text = (proc.stdout or "").strip().splitlines()
+        return int(text[0]) if text and text[0].strip().isdigit() else None
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def main() -> int:

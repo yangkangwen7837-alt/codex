@@ -49,9 +49,14 @@ python scripts/ensure_site.py                 # 看护：没在跑就拉起来�
 
 | 任务名 | 频率 | 作用 |
 |---|---|---|
-| `BigFishSite` | 每 5 分钟 | 跑 `scripts/ensure_site.py`：网站没在跑就拉起来（健康时不写文件、不重启） |
+| `BigFishSiteRun` | 每天 00:05 + 按需 | **站点的载体**：任务进程本身就是网站（`start_site.py`），失败自动重启，已在运行则忽略重复实例 |
+| `BigFishSite` | 每 1 分钟 | 跑 `scripts/ensure_site.py`：健康检查不过就 `schtasks /Run` 唤醒上面的载体任务（健康时什么都不做） |
 | `BigFishUpdateAM` | 工作日 08:30 | 跑 `scripts/run_update_once.py`：盘前增量抓数 + 跑批 |
 | `BigFishUpdatePM` | 工作日 16:30 | 同上，跑完再把快照发布到 GitHub（`--publish`） |
+
+四个任务都已设为**允许电池供电运行、不限运行时长的单实例**。这样站点既不属于任何终端会话，
+也不会被"笔记本切到电池"拒之门外（默认设置正是上次失败的原因）。
+手动兜底：双击项目根目录的 `启动网站.cmd`（会开一个窗口，关掉窗口即停止）。
 
 > **端口说明**：网站地址是 `http://localhost:8510`。原先用 8501，但 8501 会被其它项目
 > （例如 `fund-sales-workbench` 的 Docker 容器）占用，被抢端口时本站就起不来，
