@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -42,6 +43,38 @@ def _run(cmd: list[str], timeout: int = 300) -> subprocess.CompletedProcess:
 
 def git(*args: str, timeout: int = 300) -> subprocess.CompletedProcess:
     return _run(["git", *SAFE, *args], timeout=timeout)
+
+
+def _proxy_url() -> str:
+    """本机代理（直连 github 不通时使用）。可用 BIGFISH_GIT_PROXY 覆盖，设为 none 表示不用。"""
+    override = os.environ.get("BIGFISH_GIT_PROXY")
+    if override:
+        return "" if override.lower() in ("none", "off", "0") else override
+    for candidate in ("http://127.0.0.1:7890", "http://127.0.0.1:7897", "http://127.0.0.1:10809"):
+        host, port = candidate.split("//")[1].split(":")
+        try:
+            with socket.create_connection((host, int(port)), timeout=1):
+                return candidate
+        except OSError:
+            continue
+    return ""
+
+
+def git_push(timeout: int = 600) -> subprocess.CompletedProcess:
+    """推送；直连失败（被墙/DNS/超时）时自动改走本机代理重试一次。"""
+    first = git("push", "origin", "main", timeout=timeout)
+    if first.returncode == 0:
+        return first
+    text = ((first.stdout or "") + (first.stderr or "")).lower()
+    if not any(key in text for key in ("could not connect", "timed out", "connection was reset",
+                                       "failed to connect", "unable to access")):
+        return first
+    proxy = _proxy_url()
+    if not proxy:
+        return first
+    print(f"直连 github 失败，改走本机代理 {proxy} 重试…")
+    return _run(["git", *SAFE, "-c", f"http.proxy={proxy}", "-c", f"https.proxy={proxy}",
+                 "push", "origin", "main"], timeout=timeout)
 
 
 def step_export() -> int:
@@ -101,7 +134,7 @@ def main() -> int:
         print("（--no-push：未推送）")
         return 0
 
-    pushed = git("push", "origin", "main", timeout=600)
+    pushed = git_push()
     if pushed.returncode != 0:
         text = ((pushed.stdout or "") + (pushed.stderr or "")).strip()
         print("git push 失败：", text[:500])
