@@ -287,3 +287,48 @@ schtasks /Run /TN BigFishSiteRun → 健康检查 True，监听 pid 16820
    （`Get-CimInstance Win32_Process` 的 `ParentProcessId`），挂在 `svchost.exe` 下才算脱钩。
 9. **计划任务的默认设置会坑人**：电池条件、运行时限、实例策略三项默认值都可能让任务"静默失败"，
    排查时先看 `Last Result`（`-2147020576` = 被拒绝、`267011` = 从未运行）。
+
+## 8. 事件：桌面每分钟闪出一个黑色终端窗口（2026-10-08 上午）
+
+### 现象
+
+`BigFishSite` 每 1 分钟触发一次，而它的动作是**用带控制台的 `python.exe` 直接跑脚本**，
+计划任务的登录方式又是"只使用交互方式"。于是每次触发都会新建一个可见的控制台窗口
+（本机默认终端是 Windows Terminal），显示完一行结果后关闭 —— 桌面上看起来就是每分钟闪一次。
+
+### 实测证据（窗口级监控，3 分钟）
+
+```
+09:20:01 WIN-OPEN title="Terminal"             class=CASCADIA_HOSTING_WINDOW_CLASS
+09:21:01 WIN-OPEN title="C:\Python314\python.exe"  class=CASCADIA_HOSTING_WINDOW_CLASS
+09:22:01 WIN-OPEN title="C:\Python314\python.exe"  class=CASCADIA_HOSTING_WINDOW_CLASS
+同时刻 PROC python.exe ... "scripts\ensure_site.py"  parent=svchost.exe(任务计划服务)
+```
+
+### 修复：所有任务动作都走"隐藏窗口"启动器
+
+新增 `scripts\run_hidden.vbs`：用 `WScript.Shell.Run(cmd, 0, True)` 以**隐藏窗口 + 等待**
+的方式启动真实命令。控制台仍然存在（所以子进程继承的是这个隐藏控制台，不会再自己弹窗），
+只是永远不显示；`True` 表示等待，计划任务的实例策略（`IgnoreNew`）因此仍然有效。
+
+四个任务的动作统一改成：
+
+```
+wscript.exe //nologo "D:\GPT\基本面反转交易策略\scripts\run_hidden.vbs" "C:\Python314\python.exe" "<脚本>" [参数]
+```
+
+另外给 `ensure_site.py` 的兜底拉起（`DETACHED_PROCESS`）补上 `CREATE_NO_WINDOW`，
+否则那条路径（父进程没有控制台）会自己弹一个窗口出来。重建任务的脚本 `tmp\setup_tasks.py`
+同步改成隐藏启动，避免以后重新注册任务时又变回"每分钟闪一次"。
+
+> 注意：PowerShell 5.1 读取 `.ps1` 时按 ANSI 解码，脚本里写中文路径会变成乱码。
+> 本次踩过这个坑（任务动作里的路径被写成乱码），所以改任务的脚本改成
+> **只用 ASCII**，中文项目目录通过 `Get-ChildItem` 动态定位。
+
+### 验证
+
+```
+改前：3 分钟内窗口事件 4 个（其中 3 个是任务触发的闪窗）
+改后：同样 3 分钟，窗口事件 0 个；BigFishSite 上次结果 = 0（看护仍正常工作）
+     BigFishSiteRun 重启后站点 3 秒内恢复：/_stcore/health = 200 ok，控制台 visible=False
+```

@@ -32,6 +32,9 @@ from bigfish.config import load_settings  # noqa: E402
 
 LOG_FILE = OUTPUT_DIR / "site.log"
 
+# 无人值守运行（计划任务 / pythonw）时不弹出任何控制台窗口
+_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
 
 def _ps_quote(text: str) -> str:
     """PowerShell 单引号字符串转义（内部的单引号翻倍）。"""
@@ -73,7 +76,7 @@ def start_site(port: int) -> int | None:
     try:
         task = subprocess.run(["schtasks", "/Run", "/TN", "BigFishSiteRun"],
                               capture_output=True, text=True, encoding="utf-8",
-                              errors="replace", timeout=60)
+                              errors="replace", timeout=60, creationflags=_NO_WINDOW)
         if task.returncode == 0:
             deadline = time.time() + 30
             while time.time() < deadline:
@@ -89,7 +92,9 @@ def start_site(port: int) -> int | None:
     # 兜底：普通方式启动（不依赖计划任务是否存在）
     env = dict(os.environ)
     env["PYTHONIOENCODING"] = "utf-8"
-    flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    flags = (getattr(subprocess, "DETACHED_PROCESS", 0)
+             | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+             | _NO_WINDOW)
     with open(LOG_FILE, "a", encoding="utf-8") as fh:
         fh.write(f"\n=== {datetime.now().astimezone().isoformat(timespec='seconds')} 由看护脚本拉起（普通方式） ===\n")
         fh.flush()
@@ -107,7 +112,7 @@ def _site_pid(port: int) -> int | None:
         proc = subprocess.run(["powershell", "-NoProfile", "-Command",
                                f"(Get-NetTCPConnection -LocalPort {port} -State Listen -ErrorAction SilentlyContinue).OwningProcess"],
                               capture_output=True, text=True, encoding="utf-8",
-                              errors="replace", timeout=30)
+                              errors="replace", timeout=30, creationflags=_NO_WINDOW)
         text = (proc.stdout or "").strip().splitlines()
         return int(text[0]) if text and text[0].strip().isdigit() else None
     except Exception:  # noqa: BLE001

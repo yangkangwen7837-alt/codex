@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import socket
 import subprocess
 import sys
@@ -32,17 +33,50 @@ SNAPSHOT = Path("data") / "snapshot"
 SAFE = ["-c", f"safe.directory={ROOT.as_posix()}"]
 
 
+def _git_exe() -> str:
+    """定位 git 可执行文件。
+
+    本机没有单独安装 Git，能用的 git 来自 Codex 运行时（只在 Codex 会话的 PATH 里），
+    而 Windows 计划任务以普通身份运行、看不到那条 PATH —— 所以这里显式找出绝对路径，
+    避免"跑批成功但发布失败"。
+    """
+    override = os.environ.get("BIGFISH_GIT")
+    if override and Path(override).exists():
+        return override
+    found = shutil.which("git")
+    if found:
+        return found
+    candidates = [
+        Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Git" / "cmd" / "git.exe",
+        Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "Git" / "cmd" / "git.exe",
+        Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Git" / "cmd" / "git.exe",
+    ]
+    cache = Path(os.environ.get("USERPROFILE", "~")).expanduser() / ".cache" / "codex-runtimes"
+    candidates += sorted(cache.glob("*/dependencies/native/git/cmd/git.exe"))
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+    return "git"
+
+
+GIT = _git_exe()
+
+
 def _run(cmd: list[str], timeout: int = 300) -> subprocess.CompletedProcess:
     env = dict(os.environ)
     env["GIT_TERMINAL_PROMPT"] = "0"      # 无人值守：不要停在账号输入
     env["GIT_ASKPASS"] = "echo"
     env["PYTHONIOENCODING"] = "utf-8"
-    return subprocess.run(cmd, cwd=str(ROOT), capture_output=True, text=True,
-                          encoding="utf-8", errors="replace", env=env, timeout=timeout)
+    try:
+        return subprocess.run(cmd, cwd=str(ROOT), capture_output=True, text=True,
+                              encoding="utf-8", errors="replace", env=env, timeout=timeout)
+    except FileNotFoundError as exc:
+        # 让调用方拿到一个"可读的失败结果"，而不是直接抛异常
+        return subprocess.CompletedProcess(cmd, 127, "", f"找不到可执行文件：{exc.filename or cmd[0]}")
 
 
 def git(*args: str, timeout: int = 300) -> subprocess.CompletedProcess:
-    return _run(["git", *SAFE, *args], timeout=timeout)
+    return _run([GIT, *SAFE, *args], timeout=timeout)
 
 
 def _proxy_url() -> str:
@@ -73,7 +107,7 @@ def git_push(timeout: int = 600) -> subprocess.CompletedProcess:
     if not proxy:
         return first
     print(f"直连 github 失败，改走本机代理 {proxy} 重试…")
-    return _run(["git", *SAFE, "-c", f"http.proxy={proxy}", "-c", f"https.proxy={proxy}",
+    return _run([GIT, *SAFE, "-c", f"http.proxy={proxy}", "-c", f"https.proxy={proxy}",
                  "push", "origin", "main"], timeout=timeout)
 
 
