@@ -1,9 +1,9 @@
 {
-  "days": 1,
-  "last_date": "20260930",
-  "overlap": NaN,
+  "days": 2,
+  "last_date": "20261008",
+  "overlap": 0.9,
   "flicker": 1.0,
-  "avg_run": 1.0,
+  "avg_run": 1.8181818181818181,
   "conclusive": false,
   "baseline": 0.84
 }
