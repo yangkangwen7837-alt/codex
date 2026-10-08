@@ -80,23 +80,21 @@ def check_site(port: int, timeout: int = 6) -> dict:
 
 
 def restart_site(port: int) -> dict:
-    """以脱离父进程的方式重启网站（否则父 shell 退出会连带杀掉它）。"""
-    env = dict(os.environ)
-    env["PYTHONIOENCODING"] = "utf-8"
+    """重启网站：交给 Windows 计划任务承载，避免进程挂在巡检（Codex 会话）之下被回收。"""
     log = OUTPUT_DIR / "site.log"
-    flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
     with open(log, "a", encoding="utf-8") as fh:
         fh.write(f"\n=== {_now().isoformat(timespec='seconds')} 由巡检重启 ===\n")
-        proc = subprocess.Popen(
-            [sys.executable, str(ROOT / "scripts" / "start_site.py"), "--port", str(port)],
-            cwd=str(ROOT), env=env, stdout=fh, stderr=subprocess.STDOUT, close_fds=True,
-            creationflags=flags,
-        )
-    for _ in range(20):
-        time.sleep(1.5)
-        if check_site(port).get("ok"):
-            return {"restarted": True, "pid": proc.pid, "log": str(log)}
-    return {"restarted": False, "pid": proc.pid, "log": str(log), "detail": "重启后仍未通过健康检查"}
+
+    env = dict(os.environ)
+    env["PYTHONIOENCODING"] = "utf-8"
+    ensure = subprocess.run([sys.executable, str(ROOT / "scripts" / "ensure_site.py")],
+                            cwd=str(ROOT), capture_output=True, text=True,
+                            encoding="utf-8", errors="replace", env=env, timeout=180)
+    detail = ((ensure.stdout or "") + (ensure.stderr or "")).strip().replace("\n", " ")[:200]
+    ok = check_site(port).get("ok", False)
+    # 这里只做信息记录：重启是否成功由随后的 site 检查真实反映，避免重复报同一件事
+    return {"ok": True, "restarted": ok and ensure.returncode == 0,
+            "detail": detail or "看护脚本未返回信息", "log": str(log)}
 
 
 def check_sandbox() -> dict:
