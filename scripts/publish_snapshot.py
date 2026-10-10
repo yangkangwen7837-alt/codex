@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import argparse
+import io
 import os
 import shutil
 import socket
@@ -28,9 +29,16 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pandas as pd
+
 ROOT = Path(__file__).resolve().parents[1]
 SNAPSHOT = Path("data") / "snapshot"
 SAFE = ["-c", f"safe.directory={ROOT.as_posix()}"]
+
+# 这些字段只是"这次跑的时间"，每次运行都变；只有它们变化时不该产生提交。
+VOLATILE_PARQUET_COLS = {"update_time"}
+VOLATILE_TEXT_COLS = {"update_time"}
+VOLATILE_JSON_KEYS = {"generated_at", "updated_at", "update_time", "run_time"}
 
 
 def _git_exe() -> str:
@@ -124,6 +132,69 @@ def step_export() -> int:
     return 0
 
 
+def _head_bytes(rel: str) -> bytes | None:
+    """HEAD 里该文件的内容（新文件返回 None）。
+
+    必须按**二进制**读取：parquet 走文本模式会被解码破坏，比较永远不相等。
+    """
+    try:
+        proc = subprocess.run([GIT, *SAFE, "show", f"HEAD:{rel}"], cwd=str(ROOT),
+                              capture_output=True, timeout=120)      # 不加 text=True → bytes
+    except FileNotFoundError:
+        return None
+    return proc.stdout if proc.returncode == 0 else None
+
+
+def _same_table(old: bytes, new_path: Path, volatile_cols: set[str]) -> bool:
+    """按内容比较表格：忽略只表示运行时间的列。任何异常都返回 False（宁可不跳过）。"""
+    try:
+        old_df = pd.read_parquet(io.BytesIO(old)) if new_path.suffix == ".parquet" else \
+            pd.read_csv(io.BytesIO(old))
+        new_df = pd.read_parquet(new_path) if new_path.suffix == ".parquet" else pd.read_csv(new_path)
+    except Exception:  # noqa: BLE001
+        return False
+    drop = [c for c in old_df.columns if c in volatile_cols and c in new_df.columns]
+    if drop:
+        old_df, new_df = old_df.drop(columns=drop), new_df.drop(columns=drop)
+    try:
+        return old_df.equals(new_df)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _same_json(old: bytes, new_path: Path) -> bool:
+    try:
+        import json  # noqa: PLC0415
+
+        old_obj = json.loads(old.decode("utf-8", "replace"))
+        new_obj = json.loads(new_path.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return False
+    if isinstance(old_obj, dict) and isinstance(new_obj, dict):
+        def strip(obj: dict) -> dict:
+            return {k: v for k, v in obj.items() if k not in VOLATILE_JSON_KEYS}
+
+        old_obj, new_obj = strip(old_obj), strip(new_obj)
+    return old_obj == new_obj
+
+
+def _is_meaningful_change(rel: str) -> bool:
+    """判断某个快照文件的改动是否有实际意义（只差运行时间则不算）。"""
+    path = ROOT / rel
+    old = _head_bytes(rel)
+    if old is None:                      # 新增文件 → 有意义
+        return True
+    if path.suffix in (".parquet", ".csv"):
+        return not _same_table(old, path, VOLATILE_PARQUET_COLS if path.suffix == ".parquet"
+                               else VOLATILE_TEXT_COLS)
+    if path.suffix == ".json":
+        return not _same_json(old, path)
+    try:
+        return old != path.read_bytes()
+    except Exception:  # noqa: BLE001
+        return True
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="发布最新一期数据快照到 GitHub")
     parser.add_argument("--no-export", action="store_true", help="跳过导出，直接发布现有快照")
@@ -150,6 +221,20 @@ def main() -> int:
     print(f"快照有 {len(changed)} 个文件变化：")
     for name in changed[:20]:
         print("   ", name)
+
+    meaningful = [rel for rel in changed if _is_meaningful_change(rel)]
+    if not meaningful:
+        # 只有 update_time / generated_at 这类"本次运行时间"在变 —— 不是真实更新，
+        # 丢掉这次改动（内容与 HEAD 一致），不产生无意义提交。
+        restored = git("restore", "--source=HEAD", "--staged", "--worktree", "--", SNAPSHOT.as_posix())
+        if restored.returncode != 0:
+            print("（丢弃时间戳改动失败：", (restored.stderr or restored.stdout).strip()[:120], "）")
+            return 1
+        print("改动只有运行时间戳（update_time / generated_at），判定为无实质变化，已跳过提交。")
+        return 0
+    if len(meaningful) != len(changed):
+        print(f"（其中 {len(changed) - len(meaningful)} 个文件只是时间戳变化，其余 {len(meaningful)} 个有实质更新）")
+    changed = meaningful
 
     date = ""
     summary = ROOT / SNAPSHOT / "processed" / "run_summary.json"
