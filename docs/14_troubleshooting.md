@@ -288,6 +288,55 @@ schtasks /Run /TN BigFishSiteRun → 健康检查 True，监听 pid 16820
 9. **计划任务的默认设置会坑人**：电池条件、运行时限、实例策略三项默认值都可能让任务"静默失败"，
    排查时先看 `Last Result`（`-2147020576` = 被拒绝、`267011` = 从未运行）。
 
+## 9. 事件：设置"修过又失效"——电池限制被重置（2026-10-10）
+
+### 现象
+
+10-10 上午网站打不开；`BigFishSiteRun` 的 `Last Result = -2147020576`（"操作员或系统管理员拒绝了请求"），
+巡检在 11:34 才把它拉回来。
+
+### 根因（两层）
+
+1. **设置被重置**：10-08 那次为了"不闪黑窗"重建了任务（改用 `run_hidden.vbs` 启动），
+   而用 `schtasks /Create` 重建会把电源策略恢复成默认（不允许电池供电）。
+   任务 XML 里 `<AllowStartIfOnBatteries>` 消失、`<StopIfGoingOnBatteries>true</StopIfGoingOnBatteries>` 回来 ——
+   笔记本一旦用电池，载体任务就被直接拒绝。
+2. **上一轮的"修复"其实是静默失败**：当时用 PowerShell 写
+   `$s.AllowStartIfOnBatteries = $true; Set-ScheduledTask ...`，脚本却报
+   `Exception setting "AllowStartIfOnBatteries": The property ... cannot be found on this object`，
+   而外层只检查退出码（PowerShell 对非终止错误仍返回 0），于是被判成"已修复"。
+   **教训：改完必须用 `schtasks /Query /XML` 复核，别信赋值语句和退出码。**
+
+### 修复：自写任务 XML 注册（可复现）
+
+新增 `scripts/install_tasks.py`：把四个任务的完整定义（触发器 + 动作 + 设置）写成 XML 再
+`schtasks /Create /XML`，关键设置显式写死：
+
+```xml
+<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+<StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+<ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+<MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+<StartWhenAvailable>true</StartWhenAvailable>
+<RestartOnFailure><Interval>PT1M</Interval><Count>5</Count></RestartOnFailure>
+```
+
+```bash
+python scripts/install_tasks.py              # 重新注册并修复设置
+python scripts/install_tasks.py --status     # 复核：允许电池=是 / 时限=PT0S / 上次结果
+```
+
+实测结果：四个任务全部 `允许电池=是 时限=PT0S`；站点进程链
+`python(9776) ← python(17128) ← wscript(16628, run_hidden.vbs) ← svchost(1968, 任务计划服务)` ——
+确实由任务计划服务承载，不随会话退出。
+
+### 现有机制的能力边界（写清楚，避免误解）
+
+* 电脑**睡眠/关机期间**巡检和看护都不会运行 —— 这段时间站点若挂掉，最快要等**唤醒后 1 分钟内**
+  才被看护任务拉起（10-09 夜间到 10-10 上午就是这种情况）。
+* 看护只在"机器醒着"时有效；如果希望睡眠期间也稳定，需要让电脑不休眠，或把站点迁到 7×24 的服务器
+  （Docker 镜像已备好，见 `Dockerfile`）。
+
 ## 8. 事件：桌面每分钟闪出一个黑色终端窗口（2026-10-08 上午）
 
 ### 现象

@@ -42,6 +42,8 @@ python scripts/start_site.py --no-scheduler   # 只起网站
 python scripts/run_scheduler.py               # 只跑调度器（无人值守）
 python scripts/site_patrol.py --restart       # 巡检（网站掉线自动重启）
 python scripts/ensure_site.py                 # 看护：没在跑就拉起来（计划任务每 5 分钟调用）
+python scripts/install_tasks.py               # 安装/修复四个计划任务（含电源策略，可重复运行）
+python scripts/install_tasks.py --status      # 只看任务现状（电池策略 / 时限 / 上次结果）
 ```
 
 **常驻方式（Windows 计划任务）**：网站与定时更新交给计划任务，不依赖任何前端会话，
@@ -57,6 +59,10 @@ python scripts/ensure_site.py                 # 看护：没在跑就拉起来�
 四个任务都已设为**允许电池供电运行、不限运行时长的单实例**。这样站点既不属于任何终端会话，
 也不会被"笔记本切到电池"拒之门外（默认设置正是上次失败的原因）。
 手动兜底：双击项目根目录的 `启动网站.cmd`（会开一个窗口，关掉窗口即停止）。
+
+> 这些电源/时长设置**每次用 `schtasks /Create` 重建任务都会被重置**（默认不允许电池供电）。
+> 重建之后请跑一次 `python scripts/install_tasks.py` 恢复设置；该脚本走"自写任务 XML + 注册"的
+> 方式，比 PowerShell 改属性可靠（后者在本机是静默失败）。
 
 > **端口说明**：网站地址是 `http://localhost:8510`。原先用 8501，但 8501 会被其它项目
 > （例如 `fund-sales-workbench` 的 Docker 容器）占用，被抢端口时本站就起不来，
