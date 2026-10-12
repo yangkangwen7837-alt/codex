@@ -28,7 +28,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PYTHON = sys.executable
 LAUNCHER = ROOT / "scripts" / "run_hidden.vbs"
-TASKS = ("BigFishSiteRun", "BigFishSite", "BigFishUpdateAM", "BigFishUpdatePM")
+TASKS = ("BigFishSiteRun", "BigFishSite", "BigFishUpdateWatch", "BigFishUpdateAM", "BigFishUpdatePM")
 
 
 def run(args: list[str], timeout: int = 120) -> subprocess.CompletedProcess:
@@ -50,12 +50,16 @@ def definitions() -> list[tuple[str, str, list[str]]]:
     every_minute = ('<TimeTrigger><StartBoundary>2026-01-01T00:00:00</StartBoundary><Enabled>true</Enabled>'
                     '<Repetition><Interval>PT1M</Interval><StopAtDurationEnd>false</StopAtDurationEnd>'
                     '</Repetition></TimeTrigger>')
+    every_quarter = ('<TimeTrigger><StartBoundary>2026-01-01T00:00:00</StartBoundary><Enabled>true</Enabled>'
+                     '<Repetition><Interval>PT15M</Interval><StopAtDurationEnd>false</StopAtDurationEnd>'
+                     '</Repetition></TimeTrigger>')
     weekdays = ('<CalendarTrigger><StartBoundary>2026-01-01T{time}:00</StartBoundary><Enabled>true</Enabled>'
                 '<ScheduleByWeek><DaysOfWeek><Monday/><Tuesday/><Wednesday/><Thursday/><Friday/>'
                 '</DaysOfWeek><WeeksInterval>1</WeeksInterval></ScheduleByWeek></CalendarTrigger>')
     return [
         ("BigFishSiteRun", task_action("start_site.py", "--port 8510 --log-to-file"), daily),
         ("BigFishSite", task_action("ensure_site.py"), every_minute),
+        ("BigFishUpdateWatch", task_action("ensure_update.py"), every_quarter),
         ("BigFishUpdateAM", task_action("run_update_once.py"), weekdays.format(time="08:30")),
         ("BigFishUpdatePM", task_action("run_update_once.py", "--publish"), weekdays.format(time="16:30")),
     ]
