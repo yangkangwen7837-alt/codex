@@ -1,22 +1,22 @@
 {
   "state": "done",
   "trigger": "windows-task",
-  "started_at": "2026-10-12T16:30:00+08:00",
-  "finished_at": "2026-10-12T16:32:08+08:00",
+  "started_at": "2026-10-13T09:21:06+08:00",
+  "finished_at": "2026-10-13T09:24:42+08:00",
   "steps": [
     {
       "key": "fetch",
       "label": "增量抓数",
       "state": "done",
-      "detail": "交易日 669 天，最新 20261012，缺失项 0 条",
-      "seconds": 11.2
+      "detail": "交易日 670 天，最新 20261013，缺失项 3 条",
+      "seconds": 72.4
     },
     {
       "key": "daily",
       "label": "全链路跑批",
       "state": "done",
       "detail": "市场 Risk Off；观察池 100 只 / 重点 20 只 / 早期线索 20 只",
-      "seconds": 116.0
+      "seconds": 143.3
     },
     {
       "key": "flicker",
@@ -27,5 +27,5 @@
     }
   ],
   "message": "更新完成",
-  "seconds": 127.3
+  "seconds": 215.7
 }
