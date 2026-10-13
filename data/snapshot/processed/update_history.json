@@ -86,5 +86,21 @@
     "finished_at": "2026-10-13T16:32:08+08:00",
     "seconds": 127.2,
     "message": "更新完成"
+  },
+  {
+    "state": "failed",
+    "trigger": "windows-task",
+    "started_at": "2026-10-13T17:35:20+08:00",
+    "finished_at": "2026-10-13T17:35:20+08:00",
+    "seconds": 0.0,
+    "message": "更新失败：name 'subprocess' is not defined"
+  },
+  {
+    "state": "done",
+    "trigger": "windows-task",
+    "started_at": "2026-10-13T17:35:32+08:00",
+    "finished_at": "2026-10-13T17:35:34+08:00",
+    "seconds": 1.7,
+    "message": "更新完成"
   }
 ]
