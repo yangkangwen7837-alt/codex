@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
+import sys
 import time
 import traceback
 from datetime import datetime
@@ -108,13 +110,18 @@ class UpdateService:
     def _step_flicker(self) -> str:
         from .. import PROJECT_ROOT
 
-        # 直接调用脚本里的逻辑，避免起子进程
-        import importlib.util
-
+        # 必须**以子进程运行脚本并带 --write**：
+        #   早先用 importlib 加载脚本「避免起子进程」，但脚本的入口是
+        #   `if __name__ == "__main__": main()`，加载时模块名不是 __main__，
+        #   main() 并不会执行 —— 这一步等于什么都没做，只是把上一次的
+        #   flicker_status.json 读出来复述，导致定时更新里的天数/文档一直是旧值。
         script = PROJECT_ROOT / "scripts" / "watchlist_flicker.py"
-        spec = importlib.util.spec_from_file_location("watchlist_flicker", script)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)  # type: ignore[union-attr]
+        proc = subprocess.run([sys.executable, str(script), "--write"],
+                              cwd=str(PROJECT_ROOT), capture_output=True, text=True,
+                              encoding="utf-8", errors="replace",
+                              env={**os.environ, "PYTHONIOENCODING": "utf-8"}, timeout=600)
+        if proc.returncode != 0:
+            raise RuntimeError(f"闪烁率跟踪脚本失败：{((proc.stderr or '') + (proc.stdout or '')).strip()[:300]}")
         status = _read_json(PROCESSED_DIR / "flicker_status.json", {})
         days = status.get("days", 0)
         return f"观察池历史 {days} 个交易日；闪烁率 {status.get('flicker', float('nan')):.0%}" \
