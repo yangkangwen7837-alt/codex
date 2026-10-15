@@ -27,6 +27,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -103,17 +104,36 @@ def _proxy_url() -> str:
 
 
 def git_push(timeout: int = 600) -> subprocess.CompletedProcess:
-    """推送；直连失败（被墙/DNS/超时）时自动改走本机代理重试一次。"""
+    """推送，带两级自愈：
+        1. 网络类失败（连接被重置 / 超时 / 连不上）先短等后**直连重试一次**；
+        2. 仍失败再改走本机代理（若代理在跑）。
+    本机网络经常在"直连可用"和"必须走代理"之间切换，这一层能挡住瞬时抖动。
+    """
+    def is_network_error(text: str) -> bool:
+        text = text.lower()
+        return any(key in text for key in ("could not connect", "timed out", "connection was reset",
+                                           "failed to connect", "unable to access", "recv failure",
+                                           "connection reset"))
+
     first = git("push", "origin", "main", timeout=timeout)
     if first.returncode == 0:
         return first
-    text = ((first.stdout or "") + (first.stderr or "")).lower()
-    if not any(key in text for key in ("could not connect", "timed out", "connection was reset",
-                                       "failed to connect", "unable to access")):
+    text = (first.stdout or "") + (first.stderr or "")
+    if not is_network_error(text):
         return first
+
+    print("推送失败（网络类），5 秒后直连重试一次…")
+    time.sleep(5)
+    second = git("push", "origin", "main", timeout=timeout)
+    if second.returncode == 0:
+        return second
+    text = (second.stdout or "") + (second.stderr or "")
+    if not is_network_error(text):
+        return second
+
     proxy = _proxy_url()
     if not proxy:
-        return first
+        return second
     print(f"直连 github 失败，改走本机代理 {proxy} 重试…")
     return _run([GIT, *SAFE, "-c", f"http.proxy={proxy}", "-c", f"https.proxy={proxy}",
                  "push", "origin", "main"], timeout=timeout)
