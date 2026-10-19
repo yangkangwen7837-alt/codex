@@ -166,5 +166,13 @@
     "finished_at": "2026-10-19T08:32:17+08:00",
     "seconds": 135.7,
     "message": "更新完成"
+  },
+  {
+    "state": "done",
+    "trigger": "windows-task",
+    "started_at": "2026-10-19T16:30:00+08:00",
+    "finished_at": "2026-10-19T16:31:59+08:00",
+    "seconds": 119.3,
+    "message": "更新完成"
   }
 ]
