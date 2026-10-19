@@ -41,12 +41,19 @@ def _ps_quote(text: str) -> str:
     return "'" + text.replace("'", "''") + "'"
 
 
-def site_ok(port: int, timeout: int = 5) -> bool:
-    try:
-        with urllib.request.urlopen(f"http://localhost:{port}/_stcore/health", timeout=timeout) as resp:
-            return resp.status == 200 and resp.read().decode(errors="replace").strip().lower().startswith("ok")
-    except Exception:  # noqa: BLE001
-        return False
+def site_ok(port: int, timeout: int = 5, attempts: int = 3) -> bool:
+    """健康检查。默认重试 3 次：机器内存/CPU 紧张时单次请求可能超时，
+    直接判定"掉线"会误触发重启（日志里就会出现假的"已拉起"）。"""
+    for attempt in range(attempts):
+        try:
+            with urllib.request.urlopen(f"http://localhost:{port}/_stcore/health", timeout=timeout) as resp:
+                if resp.status == 200 and resp.read().decode(errors="replace").strip().lower().startswith("ok"):
+                    return True
+        except Exception:  # noqa: BLE001
+            pass
+        if attempt < attempts - 1:
+            time.sleep(2)
+    return False
 
 
 def _port_in_use_by_other(port: int, timeout: int = 3) -> bool:
