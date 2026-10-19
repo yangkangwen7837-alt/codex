@@ -1,5 +1,5 @@
 {
-  "as_of": "20261016",
+  "as_of": "20261019",
   "regime": "Risk Off",
   "universe": 5911,
   "scored": 6545,
@@ -11,34 +11,34 @@
     "A": 3
   },
   "stages": {
-    "TURNAROUND_CONFIRMED": 9,
-    "PRICE_CONFIRMED": 5,
-    "ACCELERATION": 3,
-    "EARLY_REVERSAL": 2,
+    "TURNAROUND_CONFIRMED": 8,
+    "ACCELERATION": 4,
+    "PRICE_CONFIRMED": 4,
+    "EARLY_REVERSAL": 3,
     "FUNDAMENTAL_WATCH": 1
   },
-  "kill_alerts_in_pool": 12,
-  "kill_alerts_market_wide": 5221,
+  "kill_alerts_in_pool": 10,
+  "kill_alerts_market_wide": 5176,
   "top_industries": [
     {
-      "industry_name": "石油石化",
-      "ods": 80.02981748726656
+      "industry_name": "煤炭",
+      "ods": 80.5161230407899
     },
     {
-      "industry_name": "煤炭",
-      "ods": 78.70902937788017
+      "industry_name": "石油石化",
+      "ods": 79.92848442641208
     },
     {
       "industry_name": "非银金融",
-      "ods": 78.00871255760367
+      "ods": 76.43303935196279
     },
     {
       "industry_name": "美容护理",
-      "ods": 72.36277993370523
+      "ods": 71.5095113499553
     },
     {
       "industry_name": "交通运输",
-      "ods": 64.54890856172689
+      "ods": 64.14141500150843
     }
   ]
 }
