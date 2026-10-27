@@ -1,30 +1,6 @@
 [
   {
     "state": "done",
-    "trigger": "auto:收盘更新",
-    "started_at": "2026-10-05T16:30:00+08:00",
-    "finished_at": "2026-10-05T16:31:17+08:00",
-    "seconds": 78.0,
-    "message": "更新完成"
-  },
-  {
-    "state": "done",
-    "trigger": "windows-task",
-    "started_at": "2026-10-07T22:31:54+08:00",
-    "finished_at": "2026-10-07T22:31:55+08:00",
-    "seconds": 0.8,
-    "message": "更新完成"
-  },
-  {
-    "state": "done",
-    "trigger": "windows-task",
-    "started_at": "2026-10-08T08:30:01+08:00",
-    "finished_at": "2026-10-08T08:31:58+08:00",
-    "seconds": 117.5,
-    "message": "更新完成"
-  },
-  {
-    "state": "done",
     "trigger": "windows-task",
     "started_at": "2026-10-08T20:18:37+08:00",
     "finished_at": "2026-10-08T20:22:33+08:00",
@@ -237,6 +213,30 @@
     "started_at": "2026-10-23T16:30:00+08:00",
     "finished_at": "2026-10-23T16:32:13+08:00",
     "seconds": 133.3,
+    "message": "更新完成"
+  },
+  {
+    "state": "done",
+    "trigger": "windows-task",
+    "started_at": "2026-10-26T09:00:08+08:00",
+    "finished_at": "2026-10-26T09:05:23+08:00",
+    "seconds": 314.7,
+    "message": "更新完成"
+  },
+  {
+    "state": "done",
+    "trigger": "windows-task",
+    "started_at": "2026-10-27T09:08:41+08:00",
+    "finished_at": "2026-10-27T09:11:34+08:00",
+    "seconds": 173.4,
+    "message": "更新完成"
+  },
+  {
+    "state": "done",
+    "trigger": "windows-task",
+    "started_at": "2026-10-27T16:30:01+08:00",
+    "finished_at": "2026-10-27T16:32:17+08:00",
+    "seconds": 136.3,
     "message": "更新完成"
   }
 ]
