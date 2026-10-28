@@ -167,10 +167,13 @@ class UpdateService:
                            "seconds": round(time.time() - started, 1), "finished_at": _now()})
         except Exception as exc:  # noqa: BLE001
             failed = next((s for s in status["steps"] if s["state"] == "running"), None)
+            # 有些异常（如 MemoryError）的 str() 是空字符串，必须带上类型名，
+            # 否则状态文件里只剩"更新失败："，事后完全无法定位。
+            exc_text = f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
             if failed is not None:
-                failed.update({"state": "failed", "detail": str(exc)[:400],
+                failed.update({"state": "failed", "detail": exc_text[:400],
                                "traceback": traceback.format_exc()[-1500:]})
-            status.update({"state": "failed", "message": f"更新失败：{exc}",
+            status.update({"state": "failed", "message": f"更新失败：{exc_text}",
                            "finished_at": _now(), "seconds": round(time.time() - started, 1)})
         finally:
             LOCK_FILE.unlink(missing_ok=True)
