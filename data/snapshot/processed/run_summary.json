@@ -1,5 +1,5 @@
 {
-  "as_of": "20261030",
+  "as_of": "20261102",
   "regime": "Risk Off",
   "universe": 5911,
   "scored": 6548,
@@ -7,38 +7,39 @@
   "ranking_rows": 20,
   "early_rows": 20,
   "grades": {
-    "B": 18,
-    "A": 2
+    "B": 19,
+    "A": 1
   },
   "stages": {
-    "TURNAROUND_CONFIRMED": 10,
-    "PRICE_CONFIRMED": 5,
-    "ACCELERATION": 2,
-    "EARLY_REVERSAL": 2,
-    "FUNDAMENTAL_WATCH": 1
+    "TURNAROUND_CONFIRMED": 9,
+    "PRICE_CONFIRMED": 3,
+    "ACCELERATION": 3,
+    "EARLY_REVERSAL": 3,
+    "FUNDAMENTAL_WATCH": 1,
+    "DISCOVERED": 1
   },
-  "kill_alerts_in_pool": 12,
-  "kill_alerts_market_wide": 5371,
+  "kill_alerts_in_pool": 14,
+  "kill_alerts_market_wide": 5290,
   "top_industries": [
     {
-      "industry_name": "石油石化",
-      "ods": 82.44134897360703
+      "industry_name": "非银金融",
+      "ods": 83.79404194020687
     },
     {
-      "industry_name": "非银金融",
-      "ods": 82.24706744868034
+      "industry_name": "石油石化",
+      "ods": 81.59979691116044
     },
     {
       "industry_name": "煤炭",
-      "ods": 81.00843108504397
+      "ods": 80.59298989278797
     },
     {
       "industry_name": "交通运输",
-      "ods": 70.99266862170087
+      "ods": 71.19364284702215
     },
     {
       "industry_name": "美容护理",
-      "ods": 67.30535190615835
+      "ods": 67.50399683559249
     }
   ]
 }
