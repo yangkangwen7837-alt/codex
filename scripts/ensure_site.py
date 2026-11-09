@@ -86,13 +86,15 @@ def start_site(port: int) -> int | None:
                               errors="replace", timeout=60, creationflags=_NO_WINDOW)
         if task.returncode == 0:
             # 冷启动在负载高时要 30~60 秒；这里用"单次探测"轮询（不要叠加 3 次重试），
-            # 等待窗口给到 90 秒，避免还没起来就误判失败、又用普通方式起一个会话内实例。
-            deadline = time.time() + 90
+            # 等待窗口给到 180 秒；如果计划任务显示"正在运行"，再继续等，绝不重复起实例。
+            deadline = time.time() + 180
             while time.time() < deadline:
                 time.sleep(3)
                 if site_ok(port, timeout=4, attempts=1):
                     return _site_pid(port)
-            print("（计划任务已触发，但 90 秒内健康检查仍未通过，改用普通方式再试）")
+                if _task_running("BigFishSiteRun"):
+                    deadline = max(deadline, time.time() + 30)
+            print("（计划任务已触发，但 180 秒内健康检查仍未通过，改用普通方式再试）")
         else:
             print(f"（计划任务启动失败：{((task.stdout or '') + (task.stderr or '')).strip()[:160]}，改用普通方式）")
     except Exception as exc:  # noqa: BLE001
@@ -126,6 +128,17 @@ def _site_pid(port: int) -> int | None:
         return int(text[0]) if text and text[0].strip().isdigit() else None
     except Exception:  # noqa: BLE001
         return None
+
+
+def _task_running(name: str) -> bool:
+    """计划任务是否处于 Running（避免在它启动的过程中再起一个重复实例）。"""
+    try:
+        proc = subprocess.run(["schtasks", "/Query", "/TN", name, "/FO", "LIST"],
+                              capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", timeout=30)
+        return "Running" in (proc.stdout or "")
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def main() -> int:
