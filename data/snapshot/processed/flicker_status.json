@@ -1,9 +1,9 @@
 {
-  "days": 21,
-  "last_date": "20261104",
-  "overlap": 0.9045,
-  "flicker": 0.41237113402061853,
-  "avg_run": 7.216494845360825,
+  "days": 23,
+  "last_date": "20261109",
+  "overlap": 0.9040909090909092,
+  "flicker": 0.4180064308681672,
+  "avg_run": 7.395498392282958,
   "conclusive": true,
   "baseline": 0.84
 }
