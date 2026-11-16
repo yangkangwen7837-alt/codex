@@ -17,6 +17,16 @@ from ..storage import ParquetStore
 
 log = logging.getLogger(__name__)
 
+# Tushare 走直连：本机系统代理（127.0.0.1:7890 之类）一旦关掉，
+# requests 仍会按 Windows 注册表里的代理设置转发，导致抓数直接失败
+# （ProxyError: Unable to connect to proxy）。api.waditu.com 直连可用，
+# 因此这里把它（以及本机地址）加入 NO_PROXY，避免被代理状态牵连。
+_NO_PROXY_HOSTS = ("api.waditu.com", "localhost", "127.0.0.1")
+for _key in ("NO_PROXY", "no_proxy"):
+    _current = {h.strip() for h in os.environ.get(_key, "").split(",") if h.strip()}
+    _current.update(_NO_PROXY_HOSTS)
+    os.environ[_key] = ",".join(sorted(_current))
+
 
 class TushareError(RuntimeError):
     """Tushare 调用失败（含权限不足）。"""
