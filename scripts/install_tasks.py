@@ -28,7 +28,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PYTHON = sys.executable
 LAUNCHER = ROOT / "scripts" / "run_hidden.vbs"
-TASKS = ("BigFishSiteRun", "BigFishSite", "BigFishUpdateWatch", "BigFishUpdateAM", "BigFishUpdatePM")
+TASKS = ("BigFishSiteRun", "BigFishSite", "BigFishUpdateWatch", "BigFishUpdateAM",
+         "BigFishUpdatePM", "BigFishUpdateLate")
 
 
 def run(args: list[str], timeout: int = 120) -> subprocess.CompletedProcess:
@@ -62,6 +63,10 @@ def definitions() -> list[tuple[str, str, list[str]]]:
         ("BigFishUpdateWatch", task_action("ensure_update.py"), every_quarter),
         ("BigFishUpdateAM", task_action("run_update_once.py"), weekdays.format(time="08:30")),
         ("BigFishUpdatePM", task_action("run_update_once.py", "--publish"), weekdays.format(time="16:30")),
+        # Tushare 的当日日线常要 17:00 之后才就绪；16:30 那次可能只能用到前一交易日的数据，
+        # 因此 19:00 再跑一次（幂等，无变化时发布脚本会自动跳过）。
+        ("BigFishUpdateLate", task_action("run_update_once.py", "--publish"),
+         weekdays.format(time="19:00")),
     ]
 
 
