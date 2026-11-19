@@ -29,9 +29,11 @@ sys.path.insert(0, str(ROOT / "src"))
 from bigfish import OUTPUT_DIR  # noqa: E402
 
 LOG_FILE = OUTPUT_DIR / "update_task.log"
-SLOTS = (dt.time(8, 30), dt.time(16, 30))        # 工作日两个更新时点
+SLOTS = (dt.time(8, 30), dt.time(16, 30), dt.time(19, 0))   # 工作日三个更新时点
 STAMP = re.compile(r"^\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})")
-TASK_FOR_SLOT = {dt.time(8, 30): "BigFishUpdateAM", dt.time(16, 30): "BigFishUpdatePM"}
+TASK_FOR_SLOT = {dt.time(8, 30): "BigFishUpdateAM",
+                 dt.time(16, 30): "BigFishUpdatePM",
+                 dt.time(19, 0): "BigFishUpdateLate"}
 
 
 def last_finished() -> dt.datetime | None:
