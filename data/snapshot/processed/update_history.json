@@ -2,22 +2,6 @@
   {
     "state": "failed",
     "trigger": "windows-task",
-    "started_at": "2026-11-06T13:45:02+08:00",
-    "finished_at": "2026-11-06T13:45:42+08:00",
-    "seconds": 40.3,
-    "message": "更新失败：KeyError: 'ts_code'"
-  },
-  {
-    "state": "failed",
-    "trigger": "windows-task",
-    "started_at": "2026-11-06T14:00:02+08:00",
-    "finished_at": "2026-11-06T14:00:48+08:00",
-    "seconds": 46.0,
-    "message": "更新失败：KeyError: 'ts_code'"
-  },
-  {
-    "state": "failed",
-    "trigger": "windows-task",
     "started_at": "2026-11-06T14:15:02+08:00",
     "finished_at": "2026-11-06T14:15:41+08:00",
     "seconds": 39.0,
@@ -237,6 +221,22 @@
     "started_at": "2026-11-19T19:00:00+08:00",
     "finished_at": "2026-11-19T19:01:25+08:00",
     "seconds": 84.6,
+    "message": "更新完成"
+  },
+  {
+    "state": "done",
+    "trigger": "windows-task",
+    "started_at": "2026-11-20T08:30:00+08:00",
+    "finished_at": "2026-11-20T08:31:38+08:00",
+    "seconds": 97.7,
+    "message": "更新完成"
+  },
+  {
+    "state": "done",
+    "trigger": "windows-task",
+    "started_at": "2026-11-20T16:30:01+08:00",
+    "finished_at": "2026-11-20T16:32:39+08:00",
+    "seconds": 157.8,
     "message": "更新完成"
   }
 ]
