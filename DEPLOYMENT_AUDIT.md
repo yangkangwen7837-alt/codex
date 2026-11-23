@@ -45,7 +45,7 @@
 | 项 | 处理 |
 |---|---|
 | `.gitignore` | ✅ 新增，已忽略 secrets / 虚拟环境 / 日志 / `data/raw`、`data/processed` / `tmp/` / `output/*` |
-| `.streamlit/secrets.toml.example` | ✅ 新增（TUSHARE_TOKEN + 预留 PushPlus/Telegram/OpenAI + `[database]` 段） |
+| `.streamlit/secrets.toml.example` | ✅ 新增（TUSHARE_TOKEN + 预留 Telegram/OpenAI + `[database]` 段；PushPlus 已按需求移除） |
 | `requirements.txt` | ✅ 重写为最小必要集 |
 | `requirements-dev.txt` | ✅ 新增（pytest，Cloud 不需要） |
 | `Dockerfile` / `.dockerignore` | ✅ 新增（python:3.11-slim、`WORKDIR /app`、healthcheck、`--server.address=0.0.0.0`） |
