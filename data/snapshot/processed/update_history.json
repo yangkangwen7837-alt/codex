@@ -2,14 +2,6 @@
   {
     "state": "done",
     "trigger": "windows-task",
-    "started_at": "2026-11-06T16:00:02+08:00",
-    "finished_at": "2026-11-06T16:01:37+08:00",
-    "seconds": 94.8,
-    "message": "更新完成"
-  },
-  {
-    "state": "done",
-    "trigger": "windows-task",
     "started_at": "2026-11-09T09:55:59+08:00",
     "finished_at": "2026-11-09T10:08:48+08:00",
     "seconds": 769.4,
@@ -237,6 +229,14 @@
     "started_at": "2026-11-24T16:30:00+08:00",
     "finished_at": "2026-11-24T16:32:50+08:00",
     "seconds": 170.3,
+    "message": "更新完成"
+  },
+  {
+    "state": "done",
+    "trigger": "windows-task",
+    "started_at": "2026-11-25T08:21:24+08:00",
+    "finished_at": "2026-11-25T08:24:19+08:00",
+    "seconds": 175.6,
     "message": "更新完成"
   }
 ]
